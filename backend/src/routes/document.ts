@@ -1,7 +1,8 @@
 /**
  * document.ts
- * POST /api/v1/document/analyze       – Upload contract file for OCR, clause extraction & Neo4j storage
- * GET  /api/v1/document/analyze/:jobId/status – Poll async job status
+ * POST /api/v1/document/analyze       – Upload, OCR, store Document node (with base64) + clauses in Neo4j
+ * GET  /api/v1/document/:documentId   – Fetch stored document metadata + clauses by ID
+ * GET  /api/v1/document/analyze/:jobId/status – Poll async job status (when Redis available)
  *
  * @swagger
  * tags:
@@ -42,7 +43,38 @@ const upload = multer({
     },
 });
 
-// ── Clause storage helper ─────────────────────────────────────────────────────
+// ── Helpers     ─
+
+async function saveDocumentNode(
+    documentId: string,
+    userId: string,
+    filename: string,
+    mimeType: string,
+    fileBase64: string,
+    rawText: string,
+    pageCount: number | null,
+    clauseCount: number,
+): Promise<void> {
+    const session = await getSession();
+    try {
+        await session.run(
+            `
+      MERGE (d:Document { id: $id })
+      SET d.user_id      = $userId,
+          d.filename     = $filename,
+          d.mime_type    = $mimeType,
+          d.file_base64  = $fileBase64,
+          d.raw_text     = $rawText,
+          d.page_count   = $pageCount,
+          d.clause_count = $clauseCount,
+          d.created_at   = datetime()
+      `,
+            { id: documentId, userId, filename, mimeType, fileBase64, rawText, pageCount, clauseCount },
+        );
+    } finally {
+        await session.close();
+    }
+}
 
 async function storeClauses(
     documentId: string,
@@ -71,6 +103,9 @@ async function storeClauses(
             cc.content     = $content,
             cc.embedding   = $embedding,
             cc.created_at  = datetime()
+        WITH cc
+        MATCH (d:Document { id: $documentId })
+        MERGE (cc)-[:PART_OF]->(d)
         `,
                 {
                     id: clauseId,
@@ -90,7 +125,7 @@ async function storeClauses(
     return storedIds;
 }
 
-// ── POST /api/v1/document/analyze ─────────────────────────────────────────────
+// ── POST /api/v1/document/analyze    
 
 /**
  * @swagger
@@ -101,11 +136,11 @@ async function storeClauses(
  *       Upload a contract image or PDF for OCR processing, clause extraction,
  *       embedding generation, and storage in Neo4j.
  *
- *       **Pipeline:** File upload → OCR (Google Vision) → Clause segmentation →
- *       Guardrail checks → Embedding generation → Neo4j storage.
+ *       The original file is saved as **base64** inside a `Document` node in Neo4j,
+ *       so it can be retrieved later via `GET /api/v1/document/{documentId}`.
  *
- *       The returned `document_id` can be used in subsequent `POST /api/v1/query`
- *       or `POST /api/v1/contract/review` calls.
+ *       The returned `document_id` can be used in `POST /api/v1/query` for
+ *       document-scoped legal Q&A.
  *     tags: [Document]
  *     requestBody:
  *       required: true
@@ -127,18 +162,15 @@ async function storeClauses(
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 document_id:
+ *                   type: string
+ *                   format: uuid
  *                 filename:
  *                   type: string
  *                   example: perjanjian_kerjasama.pdf
  *                 page_count:
  *                   type: integer
  *                   example: 3
- *                 ocr_confidence:
- *                   type: number
- *                   example: 0.97
  *                 clause_count:
  *                   type: integer
  *                   example: 8
@@ -151,52 +183,25 @@ async function storeClauses(
  *                         type: integer
  *                       header:
  *                         type: string
- *                         example: "Pasal 1"
  *                       content_preview:
  *                         type: string
- *                         example: "Para pihak sepakat untuk..."
  *                       pasal_references:
  *                         type: array
  *                         items:
  *                           type: string
- *                         example: ["Pasal 1320", "Pasal 1338"]
  *                 embedding_status:
  *                   type: string
  *                   enum: [stored, partial, failed]
- *                   example: stored
  *                 stored_clause_ids:
  *                   type: array
  *                   items:
  *                     type: string
- *                   example: ["contract-clause-1708825200000-0", "contract-clause-1708825200000-1"]
  *                 guardrail:
  *                   type: object
- *                   properties:
- *                     is_safe:
- *                       type: boolean
- *                     warning_count:
- *                       type: integer
- *                     critical_violations:
- *                       type: array
- *                       items:
- *                         type: string
  *       400:
  *         description: No file provided, or unsupported file type
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: error
- *                 code:
- *                   type: string
- *                   example: MISSING_FILE
- *                 message:
- *                   type: string
  *       500:
- *         description: OCR failure or embedding/Neo4j storage error
+ *         description: OCR failure or storage error
  */
 router.post(
     "/analyze",
@@ -209,28 +214,51 @@ router.post(
 
         const documentId = uuidv4();
         const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
+        const filename = req.file.originalname ?? `document-${documentId}`;
+        const fileBase64 = req.file.buffer.toString("base64");
 
         try {
             const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
             const guardrail = await runGuardrailChecks(ocrResult.raw_text);
 
-            // Store clauses and collect their IDs (best-effort, non-blocking failure)
+            // 1. Save Document node with base64 file (persistent storage)
+            let docSaved = false;
+            try {
+                await saveDocumentNode(
+                    documentId,
+                    userId,
+                    filename,
+                    req.file.mimetype,
+                    fileBase64,
+                    ocrResult.raw_text,
+                    ocrResult.page_count ?? null,
+                    ocrResult.clauses.length,
+                );
+                docSaved = true;
+            } catch (err) {
+                console.warn("[document/analyze] Document node save failed:", (err as Error).message);
+            }
+
+            // 2. Store clauses and link them to the Document node
             let storedClauseIds: string[] = [];
             let embeddingStatus: "stored" | "partial" | "failed" = "stored";
             try {
                 storedClauseIds = await storeClauses(documentId, userId, ocrResult.clauses);
-            } catch {
+            } catch (err) {
+                console.warn("[document/analyze] Clause storage failed:", (err as Error).message);
                 embeddingStatus = "failed";
             }
 
+            if (storedClauseIds.length > 0 && storedClauseIds.length < ocrResult.clauses.length) {
+                embeddingStatus = "partial";
+            }
+
             res.json(success({
-                success: true,
                 document_id: documentId,
-                filename: req.file.originalname ?? null,
+                filename,
                 raw_text: ocrResult.raw_text,
                 language: ocrResult.language ?? "id",
                 page_count: ocrResult.page_count ?? null,
-                ocr_confidence: null, // not available from current OCR service
                 clause_count: ocrResult.clauses.length,
                 clauses: ocrResult.clauses.map((c) => ({
                     index: c.index,
@@ -240,6 +268,7 @@ router.post(
                 })),
                 embedding_status: embeddingStatus,
                 stored_clause_ids: storedClauseIds,
+                document_saved: docSaved,  // true = file base64 is stored in Neo4j
                 guardrail: {
                     is_safe: guardrail.is_safe,
                     warning_count: guardrail.warning_count,
@@ -256,16 +285,116 @@ router.post(
     },
 );
 
-// ── GET /api/v1/document/analyze/:jobId/status ────────────────────────────────
+// ── GET /api/v1/document/:documentId   ─────
+
+/**
+ * @swagger
+ * /api/v1/document/{documentId}:
+ *   get:
+ *     summary: Retrieve a stored document (metadata + clauses + original file as base64)
+ *     tags: [Document]
+ *     parameters:
+ *       - in: path
+ *         name: documentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Document found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document_id:
+ *                   type: string
+ *                 filename:
+ *                   type: string
+ *                 mime_type:
+ *                   type: string
+ *                 page_count:
+ *                   type: integer
+ *                 clause_count:
+ *                   type: integer
+ *                 file_base64:
+ *                   type: string
+ *                   description: Original file encoded as base64
+ *                 clauses:
+ *                   type: array
+ *       404:
+ *         description: Document not found
+ */
+router.get(
+    "/:documentId",
+    async (req: Request, res: Response): Promise<void> => {
+        const { documentId } = req.params;
+        const session = await getSession();
+
+        try {
+            // Fetch Document node + all linked clauses
+            const result = await session.run(
+                `
+        MATCH (d:Document { id: $documentId })
+        OPTIONAL MATCH (cc:ContractClause)-[:PART_OF]->(d)
+        WITH d, cc ORDER BY cc.index ASC
+        WITH d, collect({
+          id:              cc.id,
+          index:           cc.index,
+          header:          cc.header,
+          content_preview: substring(coalesce(cc.content, ''), 0, 200)
+        }) AS clauses
+        RETURN d, clauses
+        `,
+                { documentId },
+            );
+
+            if (result.records.length === 0) {
+                res.status(404).json(apiError("NOT_FOUND", `Document "${documentId}" not found. Make sure it was uploaded via POST /api/v1/document/analyze.`));
+                return;
+            }
+
+            const record = result.records[0];
+            const doc = record.get("d").properties;
+            const clauses = record.get("clauses") as Array<Record<string, unknown>>;
+
+            res.json(success({
+                document_id: doc.id as string,
+                filename: doc.filename as string,
+                mime_type: doc.mime_type as string,
+                page_count: doc.page_count as number | null,
+                clause_count: doc.clause_count as number,
+                raw_text: doc.raw_text as string,
+                file_base64: doc.file_base64 as string,
+                created_at: doc.created_at as string,
+                clauses: clauses
+                    .filter((c) => c.id !== null)
+                    .sort((a, b) => (a.index as number) - (b.index as number))
+                    .map((c) => ({
+                        id: c.id,
+                        index: c.index,
+                        header: c.header,
+                        content_preview: c.content_preview ?? (c.content as string)?.slice(0, 200),
+                    })),
+            }));
+        } catch (err: unknown) {
+            console.error("[document/get]", err);
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.status(500).json(apiError("INTERNAL", message));
+        } finally {
+            await session.close();
+        }
+    },
+);
+
+// ── GET /api/v1/document/analyze/:jobId/status   
 
 /**
  * @swagger
  * /api/v1/document/analyze/{jobId}/status:
  *   get:
  *     summary: Poll the status of an async document analysis job
- *     description: |
- *       When the queue-based pipeline is active, use this endpoint to check
- *       whether an enqueued `document-analysis` job has completed.
  *     tags: [Document]
  *     parameters:
  *       - in: path
@@ -273,31 +402,15 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
- *         description: Job ID returned by the POST /analyze endpoint
  *     responses:
  *       200:
  *         description: Current job state
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   enum: [waiting, active, completed, failed]
- *                 result:
- *                   type: object
- *                   description: Present when status is "completed"
- *                 reason:
- *                   type: string
- *                   description: Present when status is "failed"
  *       404:
  *         description: Job not found
  */
 router.get(
     "/analyze/:jobId/status",
     async (req: Request, res: Response): Promise<void> => {
-        // Queue-based status polling (requires Redis + BullMQ worker running)
         try {
             const { analysisQueue } = await import("../queues/analysisQueue");
             const jobId = req.params.jobId;
@@ -317,7 +430,6 @@ router.get(
                 res.json(success({ status: state, progress: job.progress }));
             }
         } catch {
-            // Queue not available (Redis offline) – graceful degradation
             res.status(503).json(apiError("QUEUE_UNAVAILABLE", "Job queue is not available. Make sure Redis is running."));
         }
     },

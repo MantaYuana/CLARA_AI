@@ -42,7 +42,7 @@ const TextBodySchema = z.object({
     .default("Analisis kontrak ini dan temukan klausula yang berpotensi merugikan."),
 });
 
-// ── Clause storage helper ──────────────────────────────────────────────────────
+//  Clause storage helper  
 
 async function storeClauses(
   documentId: string,
@@ -86,7 +86,7 @@ async function storeClauses(
   }
 }
 
-// ── POST /api/v1/contract/review ──────────────────────────────────────────────
+//  POST /api/v1/contract/review  
 
 /**
  * @swagger
@@ -281,7 +281,7 @@ router.post(
         "Analisis kontrak ini dan temukan klausula yang berpotensi merugikan.";
       const documentId = uuidv4();
 
-      // ── File path ──────────────────────────────────────────────────────────
+      //  File path  
       if (req.file) {
         const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
         contractText = ocrResult.raw_text;
@@ -294,7 +294,10 @@ router.post(
           runGuardrailChecks(contractText),
           hybridRetrieval(question, documentId),
         ]);
-        const reasoning = await reason(question, context);
+        // Always inject the contract text directly — don't rely solely on retrieval
+        const reasoning = await reason(question, context, [
+          { role: "user", content: `Berikut isi kontrak yang harus kamu analisis:\n\n${contractText}` },
+        ]);
 
         res.json(
           success({
@@ -333,7 +336,7 @@ router.post(
         return;
       }
 
-      // ── Text-only path ─────────────────────────────────────────────────────
+      //  Text-only path  
       const parsed = TextBodySchema.safeParse(req.body);
       if (!parsed.success || !parsed.data.text) {
         res.status(400).json(apiError("INVALID_INPUT", 'Provide either a file upload or a "text" field.'));
