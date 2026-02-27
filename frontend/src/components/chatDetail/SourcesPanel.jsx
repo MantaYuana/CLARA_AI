@@ -52,20 +52,20 @@ const SourcesPanel = ({
   return (
     <>
       <div
-        className={`flex flex-col bg-background border border-border rounded-2xl overflow-hidden
+        className={`flex flex-col shadow-md border-primary dark:bg-background border dark:border-border rounded-2xl overflow-hidden
                     transition-all duration-300 shrink-0 h-full
                     ${collapsed ? "w-12" : "w-full lg:w-80"}`}
       >
         {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-primary dark:border-border shrink-0">
           {!collapsed && (
-            <span className="text-textPrimary text-sm font-semibold">
+            <span className="dark:text-textPrimary text-sm font-semibold">
               Upload File
             </span>
           )}
           <button
             onClick={() => setCollapsed((p) => !p)}
-            className="ml-auto p-1.5 rounded-lg text-textSecondary hover:text-textPrimary hover:bg-surfaceLight transition-colors"
+            className="ml-auto p-1.5 rounded-lg cursor-pointer dark:text-textSecondary dark:hover:text-textPrimary hover:bg-gray-200 dark:hover:bg-surfaceLight transition-colors"
             aria-label={collapsed ? "Expand panel" : "Collapse panel"}
           >
             {collapsed ? (
@@ -82,14 +82,14 @@ const SourcesPanel = ({
           <div className="flex flex-col items-center py-3 gap-3">
             <button
               onClick={() => setModalOpen(true)}
-              className="p-2 rounded-lg text-textSecondary hover:text-primary hover:bg-surface transition-colors"
+              className="p-2 rounded-lg text-black dark:text-textSecondary hover:text-primary hover:bg-surface transition-colors"
               title="Upload File"
             >
               <HiOutlineCloudArrowUp className="text-xl" />
             </button>
             {sources.length > 0 && (
               <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-white text-[10px] font-bold">
+                <span className="dark:text-white text-[10px] font-bold">
                   {sources.length}
                 </span>
               </div>
@@ -100,8 +100,8 @@ const SourcesPanel = ({
             {/* Upload button */}
             <button
               onClick={() => setModalOpen(true)}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                         border border-dashed border-border text-textSecondary text-sm
+              className="flex items-center cursor-pointer justify-center gap-2 w-full py-2.5 rounded-xl
+                         border border-dashed border-border dark:text-textSecondary text-sm
                          hover:border-primary/50 hover:text-primary hover:bg-primary/5
                          transition-all duration-200"
             >
@@ -125,7 +125,7 @@ const SourcesPanel = ({
                                 ${
                                   s.selected
                                     ? "bg-primary/15 border border-primary/30"
-                                    : "hover:bg-surface border border-transparent"
+                                    : "dark:hover:bg-surface hover:bg-gray-200 border border-transparent"
                                 }
                                 ${s.status !== "ready" ? "cursor-default" : ""}`}
                   >
@@ -136,14 +136,14 @@ const SourcesPanel = ({
                     <div className="flex-1 min-w-0">
                       <p
                         className={`text-xs font-medium truncate ${
-                          s.selected ? "text-primary" : "text-textPrimary"
+                          s.selected ? "text-primary" : "dark:text-textPrimary text-gray-800"
                         }`}
                       >
                         {s.name}
                       </p>
                       {s.status === "analyzing" && (
-                        <p className="text-textSecondary text-[10px]">
-                          Menganalisa...
+                        <p className="dark:text-textSecondary text-[10px]">
+                          Analyzing...
                         </p>
                       )}
                     </div>
@@ -155,7 +155,7 @@ const SourcesPanel = ({
                           e.stopPropagation();
                           onRemoveSource(s.id);
                         }}
-                        className="p-0.5 opacity-0 group-hover:opacity-100 text-textSecondary hover:text-red-400 transition-all"
+                        className="p-0.5 opacity-0 group-hover:opacity-100 dark:text-textSecondary hover:text-red-400 transition-all"
                       >
                         <HiOutlineXMark className="text-sm" />
                       </button>

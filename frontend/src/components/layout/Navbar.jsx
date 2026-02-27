@@ -12,7 +12,6 @@ const Navbar = () => {
   const [isDark, setIsDark] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading } = useAuth();
-  console.log("Navbar user:", user);
 
   // Theme init
   useEffect(() => {

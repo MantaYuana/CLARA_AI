@@ -15,7 +15,17 @@ const UserAvatar = ({ user, onSignOut }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // 🛡 Guard clause
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   if (!user) return null;
 
   const name = user.name || "User";
@@ -28,15 +38,6 @@ const UserAvatar = ({ user, onSignOut }) => {
     .join("")
     .substring(0, 2)
     .toUpperCase();
-
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   return (
     <div ref={ref} className="relative">
@@ -68,7 +69,7 @@ const UserAvatar = ({ user, onSignOut }) => {
       {/* Google-style user dropdown */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-72 rounded-2xl border dark:border-border
+          className="absolute right-0 top-full mt-2 w-72 rounded-2xl border bg-white dark:border-border
                      dark:bg-surface shadow-2xl shadow-black/50 z-50 overflow-hidden
                      animate-fadeIn"
         >
@@ -79,8 +80,8 @@ const UserAvatar = ({ user, onSignOut }) => {
             </span>
             <button
               onClick={() => setOpen(false)}
-              className="p-1 rounded-full dark:text-textSecondary dark:hover:text-textPrimary
-                         hover:bg-surfaceLight transition-colors"
+              className="p-1 rounded-full cursor-pointer dark:text-textSecondary dark:hover:text-textPrimary
+                         dark:hover:bg-surfaceLight hover:bg-gray-200 transition-colors"
             >
               <HiOutlineXMark className="text-base" />
             </button>
@@ -116,9 +117,7 @@ const UserAvatar = ({ user, onSignOut }) => {
               <p className="dark:text-textPrimary font-semibold text-base">
                 Hi, {name.split(" ")[0]}!
               </p>
-              <p className="dark:text-textSecondary text-xs mt-0.5">
-                {email}
-              </p>
+              <p className="dark:text-textSecondary text-xs mt-0.5">{email}</p>
             </div>
 
             {/* Manage account button */}
