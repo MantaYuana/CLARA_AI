@@ -16,10 +16,10 @@ const ACCEPTED_TYPES = [
 const fileArraySchema = yup.array().of(
   yup
     .mixed()
-    .test("fileSize", `Ukuran file maksimal ${MAX_SIZE_MB}MB`, (f) =>
+    .test("fileSize", `File size must not exceed ${MAX_SIZE_MB}MB`, (f) =>
       f ? f.size <= MAX_SIZE_MB * 1024 * 1024 : true,
     )
-    .test("fileType", "Format tidak didukung. Gunakan PDF atau DOCX", (f) =>
+    .test("fileType", "Unsupported format. Please use PDF or DOCX", (f) =>
       f ? ACCEPTED_TYPES.includes(f.type) : true,
     ),
 );
@@ -82,7 +82,7 @@ const useSources = () => {
         console.log(
           `[useSources] "${item.name}" analyzed successfully, documentId: ${documentId}`,
         );
-        toast.success(`"${item.name}" berhasil dianalisa`);
+        toast.success(`"${item.name}" analyzed successfully`);
       } catch (err) {
         console.error(
           "[useSources] Analyze error:",
@@ -91,7 +91,7 @@ const useSources = () => {
         setSources((prev) =>
           prev.map((s) => (s.id === item.id ? { ...s, status: "error" } : s)),
         );
-        toast.error(`Gagal menganalisa "${item.name}"`);
+        toast.error(`Failed to analyze "${item.name}"`);
       }
     }
   };

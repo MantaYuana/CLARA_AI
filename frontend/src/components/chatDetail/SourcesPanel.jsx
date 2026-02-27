@@ -6,9 +6,11 @@ import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineXMark,
+  HiOutlineFolder,
 } from "react-icons/hi2";
 import { HiOutlineDocumentText } from "react-icons/hi";
 import UploadModal from "./UploadModal";
+import { fetchUserDocuments } from "../../Services/documentService";
 
 /**
  * SourcesPanel — left collapsible panel for file management.
@@ -34,6 +36,28 @@ const SourcesPanel = ({
 
   const [recentlyReadyIds, setRecentlyReadyIds] = useState([]);
   const prevSourcesRef = useRef(sources);
+
+  // ── My Documents state ─────────────────────────────────────────────────────
+  const [userDocuments, setUserDocuments] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docsError, setDocsError] = useState(null);
+
+  useEffect(() => {
+    const loadDocs = async () => {
+      setDocsLoading(true);
+      setDocsError(null);
+      try {
+        const data = await fetchUserDocuments();
+        setUserDocuments(data);
+      } catch (err) {
+        console.error("[SourcesPanel] Failed to load user documents:", err);
+        setDocsError("Failed to load documents.");
+      } finally {
+        setDocsLoading(false);
+      }
+    };
+    loadDocs();
+  }, []);
 
   useEffect(() => {
     const newReadyIds = [];
@@ -89,17 +113,30 @@ const SourcesPanel = ({
     );
   };
 
+  /** Format a date string into a short readable form */
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <>
       <div
-        className={`flex flex-col shadow-md border-primary dark:bg-background border dark:border-border rounded-2xl overflow-hidden
+        className={`flex flex-col shadow-md bg-white dark:bg-background border border-gray-200 dark:border-border rounded-2xl overflow-hidden
                     transition-all duration-300 shrink-0 h-full
                     ${collapsed ? "w-12" : "w-full lg:w-80"}`}
       >
         {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-primary dark:border-border shrink-0">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 dark:border-border shrink-0">
           {!collapsed && (
-            <span className="dark:text-textPrimary text-sm font-semibold">
+            <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
               Upload File
             </span>
           )}
@@ -134,6 +171,12 @@ const SourcesPanel = ({
                 </span>
               </div>
             )}
+            <button
+              className="p-2 rounded-lg text-black dark:text-textSecondary hover:text-primary hover:bg-surface transition-colors"
+              title="My Documents"
+            >
+              <HiOutlineFolder className="text-xl" />
+            </button>
           </div>
         ) : (
           <div className="flex flex-col flex-1 gap-3 p-3 overflow-y-auto">
@@ -143,7 +186,7 @@ const SourcesPanel = ({
               disabled={isDraftMode}
               title={
                 isDraftMode
-                  ? "Upload tidak tersedia di mode Create Contract"
+                  ? "Upload not available in Create Contract mode"
                   : undefined
               }
               className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
@@ -163,7 +206,7 @@ const SourcesPanel = ({
             {isDraftMode && (
               <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
                 <p className="text-[11px] text-yellow-400/80 text-center leading-snug">
-                  File tidak dapat dipilih saat mode Create Contract aktif.
+                  Files cannot be selected while Create Contract mode is active.
                 </p>
               </div>
             )}
@@ -171,7 +214,7 @@ const SourcesPanel = ({
             {/* File list */}
             {sources.length === 0 ? (
               <p className="text-textSecondary text-xs text-center mt-4">
-                Belum ada file. Upload kontrak untuk mulai.
+                No files yet. Upload a contract to get started.
               </p>
             ) : (
               <ul className="flex flex-col gap-1.5">
@@ -235,6 +278,56 @@ const SourcesPanel = ({
                 ))}
               </ul>
             )}
+
+            {/* ── My Documents Section ──────────────────────────────────── */}
+            <div className="mt-2 border-t border-border/40 pt-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <HiOutlineFolder className="text-textSecondary text-sm" />
+                <span className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
+                  My Documents
+                </span>
+              </div>
+
+              {docsLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin block" />
+                </div>
+              ) : docsError ? (
+                <p className="text-red-400/70 text-xs text-center py-2">
+                  {docsError}
+                </p>
+              ) : userDocuments.length === 0 ? (
+                <p className="text-textSecondary/50 text-xs text-center py-2">
+                  No documents found.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {userDocuments.map((doc) => (
+                    <li
+                      key={doc.id}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border/30 dark:hover:bg-surface hover:bg-gray-100 transition-colors"
+                    >
+                      <HiOutlineDocumentText className="text-textSecondary text-base shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-textPrimary font-medium truncate">
+                          {doc.title || "Untitled"}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {doc.type && (
+                            <span className="text-[9px] uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-semibold">
+                              {doc.type}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-textSecondary/50">
+                            {formatDate(doc.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
       </div>

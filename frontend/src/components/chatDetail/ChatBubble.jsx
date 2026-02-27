@@ -213,7 +213,7 @@ const DraftStatusBadge = ({ status, documentType, bindingWarning }) => {
         ) : (
           <HiOutlineQuestionMarkCircle className="text-base shrink-0" />
         )}
-        {isReady ? "Draft Siap" : isClarify ? "Perlu Klarifikasi" : status}
+        {isReady ? "Draft Ready" : isClarify ? "Needs Clarification" : status}
         {documentType && (
           <span className="ml-auto font-medium opacity-80">{documentType}</span>
         )}
@@ -221,7 +221,7 @@ const DraftStatusBadge = ({ status, documentType, bindingWarning }) => {
       {bindingWarning && (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs">
           <HiOutlineExclamationCircle className="text-base shrink-0" />
-          Kontrak ini memiliki klausul mengikat — perlu review lebih lanjut.
+          This contract has binding clauses — further review required.
         </div>
       )}
     </div>
@@ -234,7 +234,7 @@ const ClarifyingQuestionsList = ({ questions }) => {
   return (
     <div className="mt-1 pt-3 border-t border-border/60">
       <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold mb-2">
-        Pertanyaan Klarifikasi
+        Clarification Questions
       </p>
       <div className="flex flex-col gap-2">
         {questions.map((q, idx) => (
@@ -301,7 +301,7 @@ const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
         <div className="flex items-center gap-1.5">
           <HiOutlineDocumentDuplicate className="text-primary text-sm" />
           <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
-            Draft Kontrak{documentNumber ? ` · ${documentNumber}` : ""}
+            Contract Draft{documentNumber ? ` · ${documentNumber}` : ""}
           </p>
         </div>
 
@@ -315,7 +315,7 @@ const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
                        transition-all duration-150 active:scale-95"
           >
             <HiOutlineExternalLink className="text-sm" />
-            Lihat PDF
+            View PDF
           </button>
         )}
       </div>

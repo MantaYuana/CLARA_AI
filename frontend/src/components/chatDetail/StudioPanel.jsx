@@ -38,15 +38,15 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
 
   return (
     <div
-      className={`flex flex-col shadow-md border-primary dark:bg-background border dark:border-border rounded-2xl overflow-hidden
+      className={`flex flex-col shadow-md bg-white dark:bg-background border border-gray-200 dark:border-border rounded-2xl overflow-hidden
                     transition-all duration-300 shrink-0 h-full
                     ${collapsed ? "w-12" : "w-full lg:w-80"}`}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center px-3 py-3 border-b border-border shrink-0">
+      <div className="flex items-center px-3 py-3 border-b border-gray-200 dark:border-border shrink-0">
         <button
           onClick={() => setCollapsed((p) => !p)}
-          className="p-1.5 rounded-lg cursor-pointer dark:text-textSecondary dark:hover:text-textPrimary hover:bg-gray-200 dark:hover:bg-surfaceLight transition-colors"
+          className="p-1.5 rounded-lg cursor-pointer text-gray-500 dark:text-textSecondary hover:text-gray-800 dark:hover:text-textPrimary hover:bg-gray-100 dark:hover:bg-surfaceLight transition-colors"
           aria-label={collapsed ? "Expand panel" : "Collapse panel"}
         >
           {collapsed ? (
@@ -56,7 +56,7 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
           )}
         </button>
         {!collapsed && (
-          <span className="dark:text-textPrimary text-sm font-semibold ml-2">
+          <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold ml-2">
             Mode
           </span>
         )}

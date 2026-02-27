@@ -8,6 +8,7 @@ import StudioPanel from "../components/chatDetail/StudioPanel";
 import useSources from "../hooks/useSources";
 import useChat from "../hooks/useChat";
 import { useAuth } from "../hooks/useAuth";
+import useProjects from "../hooks/useProjects";
 
 const TABS = ["Sources", "Chat", "Studio"];
 
@@ -32,6 +33,15 @@ const ChatDetail = () => {
     sendChatMessage,
     queryOnly,
   } = useChat();
+
+  const { handleCreate } = useProjects();
+
+  const handleCreateNewChat = async () => {
+    try {
+      const newProject = await handleCreate();
+      navigate(`/chat/${newProject.id}`);
+    } catch {}
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -86,7 +96,7 @@ const ChatDetail = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col dark:bg-backgroundBlack font-poppins overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-backgroundBlack font-poppins overflow-hidden">
       <Toaster
         position="top-right"
         toastOptions={{
@@ -103,10 +113,11 @@ const ChatDetail = () => {
         projectTitle={projectTitle}
         user={user}
         onLogout={logout}
+        onCreateNew={handleCreateNewChat}
       />
 
-      {/* ── Mobile tab bar (hidden on lg+) ───────────────────────────────── */}
-      <div className="flex lg:hidden border-b border-border bg-backgroundBlack px-4 shrink-0">
+      {/* ── Mobile tab bar (hidden on lg+) ──────────────────────────────────── */}
+      <div className="flex lg:hidden border-b border-gray-200 dark:border-border bg-white dark:bg-backgroundBlack px-4 shrink-0">
         {TABS.map((tab) => (
           <button
             key={tab}
@@ -115,7 +126,7 @@ const ChatDetail = () => {
                         ${
                           mobileTab === tab
                             ? "text-primary border-b-2 border-primary"
-                            : "text-textSecondary hover:text-textPrimary"
+                            : "text-gray-500 dark:text-textSecondary hover:text-gray-800 dark:hover:text-textPrimary"
                         }`}
           >
             {tab}
@@ -123,11 +134,13 @@ const ChatDetail = () => {
         ))}
       </div>
 
-      {/* ── 3-panel area ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex gap-4 py-4 px-10 pb-4 overflow-hidden">
+      {/* ── 3-panel area ─────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex gap-3 py-3 px-3 md:px-4 lg:px-8 pb-4 overflow-hidden min-h-0">
         {/* Left — Sources */}
         <div
-          className={`lg:flex flex-col shrink-0 ${mobileTab === "Sources" ? "flex" : "hidden"} w-full lg:w-auto`}
+          className={`lg:flex flex-col shrink-0 min-h-0 ${
+            mobileTab === "Sources" ? "flex" : "hidden"
+          } w-full lg:w-auto`}
         >
           <SourcesPanel
             sources={sources}
@@ -142,7 +155,9 @@ const ChatDetail = () => {
 
         {/* Center — Chat */}
         <div
-          className={`lg:flex flex-1 flex-col min-w-0 ${mobileTab === "Chat" ? "flex" : "hidden"}`}
+          className={`lg:flex flex-1 flex-col min-w-0 min-h-0 ${
+            mobileTab === "Chat" ? "flex" : "hidden"
+          }`}
         >
           <ChatPanel
             messages={messages}
@@ -156,7 +171,9 @@ const ChatDetail = () => {
 
         {/* Right — Studio */}
         <div
-          className={`lg:flex flex-col shrink-0 ${mobileTab === "Studio" ? "flex" : "hidden"} w-full lg:w-auto`}
+          className={`lg:flex flex-col shrink-0 min-h-0 ${
+            mobileTab === "Studio" ? "flex" : "hidden"
+          } w-full lg:w-auto`}
         >
           <StudioPanel activeMode={activeMode} onSetMode={setActiveMode} />
         </div>
