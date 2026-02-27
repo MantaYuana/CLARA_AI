@@ -24,9 +24,11 @@ const ChatDetail = () => {
     useChat();
 
   const handleSend = (message) => {
+    // Pass real documentIds returned from the analyze endpoint
+    // chatService uses the first one as document_id for the query
     const selectedSourceIds = sources
-      .filter((s) => s.selected && s.status === "ready")
-      .map((s) => s.id);
+      .filter((s) => s.selected && s.status === "ready" && s.documentId)
+      .map((s) => s.documentId);
     sendChatMessage({ message, selectedSourceIds, mode: activeMode });
   };
 
