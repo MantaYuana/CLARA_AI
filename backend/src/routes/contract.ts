@@ -24,12 +24,12 @@ import { hybridRetrieval } from "../services/retrieval/hybridRetrieval";
 import { reason } from "../services/reasoning/reasoningService";
 import { getSession } from "../config/neo4j";
 import { TaskType } from "@google/generative-ai";
-import { success, error } from "../utils/response";
+import { success, error as apiError } from "../utils/response";
 
 const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 const TextBodySchema = z.object({
@@ -40,7 +40,6 @@ const TextBodySchema = z.object({
     .default("Analisis kontrak ini dan temukan klausula yang berpotensi merugikan."),
 });
 
-// Store clauses as ContractClause nodes in Neo4j (scoped to userId)
 async function storeClauses(
   documentId: string,
   userId: string,
@@ -56,7 +55,7 @@ async function storeClauses(
           TaskType.RETRIEVAL_DOCUMENT,
         );
       } catch {
-        // Skip embedding if API fails; clause is still stored without vector
+        // Skip embedding if API fails
       }
 
       await session.run(
@@ -123,7 +122,7 @@ router.post(
   "/review",
   upload.single("file"),
   async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId ?? "anonymous";
+    const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
 
     try {
       let contractText = "";
@@ -132,17 +131,14 @@ router.post(
         "Analisis kontrak ini dan temukan klausula yang berpotensi merugikan.";
       const documentId = uuidv4();
 
-      // ── Extract text ──────────────────────────────────────────────────────
       if (req.file) {
         const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
         contractText = ocrResult.raw_text;
 
-        // Store clauses in background (non-blocking for response speed)
         storeClauses(documentId, userId, ocrResult.clauses).catch((err) =>
           console.warn("Clause storage warning:", err?.message),
         );
 
-        // Run all pipeline steps
         const [guardrail, context] = await Promise.all([
           runGuardrailChecks(contractText),
           hybridRetrieval(question, documentId),
@@ -173,12 +169,9 @@ router.post(
         return;
       }
 
-      // ── Text-only path ────────────────────────────────────────────────────
       const parsed = TextBodySchema.safeParse(req.body);
       if (!parsed.success || (!parsed.data.text && !req.file)) {
-        res
-          .status(400)
-          .json(error("INVALID_INPUT", 'Provide either a file upload or a "text" field.'));
+        res.status(400).json(apiError("INVALID_INPUT", 'Provide either a file upload or a "text" field.'));
         return;
       }
 
@@ -212,7 +205,7 @@ router.post(
     } catch (err: unknown) {
       console.error("[contract/review]", err);
       const message = err instanceof Error ? err.message : "Internal server error";
-      res.status(500).json(error("INTERNAL", message));
+      res.status(500).json(apiError("INTERNAL", message));
     }
   },
 );
