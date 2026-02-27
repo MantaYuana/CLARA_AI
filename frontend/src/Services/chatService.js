@@ -1,27 +1,51 @@
 import { axiosInstance } from "../lib/axios";
 
-const DUMMY_RESPONSES = [
-  "Berdasarkan dokumen yang Anda upload, saya menemukan beberapa klausul yang perlu diperhatikan, terutama pada bagian penghentian kontrak (Pasal 12.3). Disarankan untuk menambahkan klausul force majeure yang lebih spesifik.",
-  "Kontrak ini memiliki risiko sedang. Pasal 5.2 tentang ganti rugi memiliki cakupan yang terlalu luas dan sebaiknya dibatasi. Selain itu, ada ketidakjelasan pada definisi 'Default' yang bisa menjadi celah hukum.",
-  "Saya telah menganalisa seluruh kontrak. Secara keseluruhan sudah cukup baik, namun klausul kerahasiaan pada Pasal 8 perlu diperkuat dengan menyertakan hukuman yang jelas untuk pelanggaran.",
-  "Berdasarkan analisa hukum, pasal kerahasiaan dalam dokumen ini sudah sesuai dengan standar industri. Namun, saya merekomendasikan penambahan klausul arbitrase sebagai mekanisme penyelesaian sengketa.",
-];
+/**
+ * DUMMY_DOCUMENT_ID — placeholder until the analyze endpoint returns a real document_id.
+ * When the analyze API is ready, pass the actual document_id received from the upload response
+ * through selectedSourceIds in useChat, and replace this constant.
+ */
+const DUMMY_DOCUMENT_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
 
 /**
- * Send a chat message to the AI.
- * Replace the dummy body with the real axios call when the backend is ready.
+ * sendQueryMessage — calls POST /api/v1/query
  *
- * @param {{ message: string, fileIds: string[], mode: string|null }} payload
+ * Request body:
+ *  {
+ *    question    : string   — the user's question
+ *    document_id : string   — UUID of the analyzed document
+ *  }
+ *
+ * Response (200): Answer with citations  — we read `response.data`
+ * Response (400): Validation error
+ * Response (401): Unauthorized
+ *
+ * @param {{ question: string, documentId?: string }} payload
  * @returns {Promise<{ content: string }>}
  */
-export const sendMessage = async ({ message, fileIds, mode }) => {
-  // TODO: replace with real API call
-  // const response = await axiosInstance.post("/api/v1/chat", { message, fileIds, mode });
-  // return response.data;
+export const sendMessage = async ({ message, fileIds = [], mode }) => {
+  // Use the first selected document_id if available, otherwise fall back to dummy
+  // TODO: when analyze endpoint is ready, fileIds will contain real document UUIDs
+  const document_id = fileIds.length > 0 ? fileIds[0] : DUMMY_DOCUMENT_ID;
 
-  console.log("[chatService] Sending message:", { message, fileIds, mode });
-  await new Promise((r) => setTimeout(r, 1200 + Math.random() * 800));
+  console.log("[chatService] POST /api/v1/query →", {
+    question: message,
+    document_id,
+  });
+
+  const response = await axiosInstance.post("query", {
+    question: message,
+    document_id,
+  });
+
+  // The backend returns "Answer with citations" — adapt based on actual response shape
+  // Common shapes: { answer } | { content } | { response } | plain string
+  const data = response.data;
   const content =
-    DUMMY_RESPONSES[Math.floor(Math.random() * DUMMY_RESPONSES.length)];
+    data?.answer ??
+    data?.content ??
+    data?.response ??
+    (typeof data === "string" ? data : "Maaf, tidak ada jawaban dari server.");
+
   return { content };
 };

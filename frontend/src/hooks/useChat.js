@@ -25,7 +25,7 @@ const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const sendChatMessage = async ({ message, selectedSourceIds = [], mode }) => {
-    // Add user message immediately
+    // Add user message immediately (optimistic)
     const userMsg = {
       id: `u-${Date.now()}`,
       role: "user",
@@ -38,23 +38,35 @@ const useChat = () => {
     try {
       const { content } = await sendMessage({
         message,
-        fileIds: selectedSourceIds,
+        fileIds: selectedSourceIds, // first id used as document_id in chatService
         mode,
       });
-      const aiMsg = {
-        id: `a-${Date.now()}`,
-        role: "assistant",
-        content,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: "assistant",
+          content,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } catch (err) {
+      console.error(
+        "[useChat] Query error:",
+        err?.response?.data ?? err.message,
+      );
+      const errMsg =
+        err?.response?.status === 401
+          ? "Sesi tidak valid. Silakan login kembali."
+          : err?.response?.status === 400
+            ? "Permintaan tidak valid. Coba lagi."
+            : "Maaf, terjadi kesalahan saat menghubungi server. Silakan coba lagi.";
       setMessages((prev) => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           role: "assistant",
-          content: "Maaf, terjadi kesalahan. Silakan coba lagi.",
+          content: errMsg,
           timestamp: new Date().toISOString(),
         },
       ]);

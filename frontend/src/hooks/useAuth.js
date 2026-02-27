@@ -15,7 +15,7 @@ export const useAuth = () => {
     }
 
     try {
-      const res = await axiosInstance.get("/api/v1/auth/me", {
+      const res = await axiosInstance.get("/auth/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -24,7 +24,6 @@ export const useAuth = () => {
 
       setUser(res.data.data);
     } catch (error) {
-      console.error("Auth error:", error);
       setUser(null);
       localStorage.removeItem("token"); 
     } finally {

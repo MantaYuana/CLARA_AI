@@ -70,12 +70,20 @@ const useSources = () => {
     // Analyze each file sequentially
     for (const item of pending) {
       try {
-        await analyzeFile(item.file);
+        const { documentId } = await analyzeFile(item.file);
         setSources((prev) =>
-          prev.map((s) => (s.id === item.id ? { ...s, status: "ready" } : s)),
+          prev.map((s) =>
+            s.id === item.id
+              ? { ...s, status: "ready", documentId: documentId ?? null }
+              : s,
+          ),
         );
         toast.success(`"${item.name}" berhasil dianalisa`);
-      } catch {
+      } catch (err) {
+        console.error(
+          "[useSources] Analyze error:",
+          err?.response?.data ?? err.message,
+        );
         setSources((prev) =>
           prev.map((s) => (s.id === item.id ? { ...s, status: "error" } : s)),
         );

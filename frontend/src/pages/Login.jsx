@@ -51,7 +51,7 @@ const Login = () => {
   }, []);
 
   const handleGoogleLogin = () => {
-    window.location.href = `${apiURL}/api/v1/auth/google`;
+    window.location.href = `${apiURL}/auth/google`;
   };
 
   return (
