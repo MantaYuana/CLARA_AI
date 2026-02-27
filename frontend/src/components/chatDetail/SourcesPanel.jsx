@@ -1,43 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineCloudArrowUp,
-  HiOutlineDocument,
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineXMark,
 } from "react-icons/hi2";
+import { HiOutlineDocumentText } from "react-icons/hi";
 import UploadModal from "./UploadModal";
-
-const formatBytes = (b) => {
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const statusIcon = (status) => {
-  if (status === "analyzing")
-    return (
-      <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin block shrink-0" />
-    );
-  if (status === "ready")
-    return (
-      <HiOutlineCheckCircle className="text-green-400 text-base shrink-0" />
-    );
-  return (
-    <HiOutlineExclamationCircle className="text-red-400 text-base shrink-0" />
-  );
-};
 
 /**
  * SourcesPanel — left collapsible panel for file management.
  *
  * Props:
- *  @param {Array}    sources       — from useSources
- *  @param {number}   selectedCount — currently selected source count
- *  @param {Function} onProcessFiles — (files) => void
- *  @param {Function} onToggleSelect — (id) => void
- *  @param {Function} onRemoveSource — (id) => void
+ * @param {Array}    sources       — from useSources
+ * @param {number}   selectedCount — currently selected source count
+ * @param {Function} onProcessFiles — (files) => void
+ * @param {Function} onToggleSelect — (id) => void
+ * @param {Function} onRemoveSource — (id) => void
  */
 const SourcesPanel = ({
   sources,
@@ -48,6 +29,63 @@ const SourcesPanel = ({
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const [recentlyReadyIds, setRecentlyReadyIds] = useState([]);
+  const prevSourcesRef = useRef(sources);
+
+  useEffect(() => {
+    const newReadyIds = [];
+
+    sources.forEach((s) => {
+      const prev = prevSourcesRef.current.find((p) => p.id === s.id);
+      if (s.status === "ready" && (!prev || prev.status !== "ready")) {
+        newReadyIds.push(s.id);
+      }
+    });
+
+    if (newReadyIds.length > 0) {
+      setRecentlyReadyIds((prev) => [...prev, ...newReadyIds]);
+
+      newReadyIds.forEach((id) => {
+        setTimeout(() => {
+          setRecentlyReadyIds((prev) => prev.filter((pId) => pId !== id));
+        }, 3000);
+      });
+
+      const latestReadyId = newReadyIds[newReadyIds.length - 1];
+      const sourceToSelect = sources.find((s) => s.id === latestReadyId);
+
+      if (sourceToSelect && !sourceToSelect.selected) {
+        onToggleSelect(latestReadyId);
+      }
+    }
+
+    prevSourcesRef.current = sources;
+  }, [sources, onToggleSelect]);
+
+  const renderStatusIcon = (source) => {
+    if (source.status === "analyzing") {
+      return (
+        <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin block shrink-0" />
+      );
+    }
+
+    if (source.status === "error") {
+      return (
+        <HiOutlineExclamationCircle className="text-red-400 text-base shrink-0" />
+      );
+    }
+
+    if (source.selected || recentlyReadyIds.includes(source.id)) {
+      return (
+        <HiOutlineCheckCircle className="text-green-400 text-base shrink-0 transition-opacity duration-300" />
+      );
+    }
+
+    return (
+      <div className="w-4 h-4 rounded-full border-[1.5px] border-gray-400 dark:border-gray-500 shrink-0 transition-opacity duration-300" />
+    );
+  };
 
   return (
     <>
@@ -125,22 +163,29 @@ const SourcesPanel = ({
                                 ${
                                   s.selected
                                     ? "bg-primary/15 border border-primary/30"
-                                    : "dark:hover:bg-surface hover:bg-gray-200 border border-transparent"
+                                    : "dark:hover:bg-surface hover:bg-gray-200 border-surface border"
                                 }
                                 ${s.status !== "ready" ? "cursor-default" : ""}`}
                   >
-                    {/* Status indicator */}
-                    {statusIcon(s.status)}
+                    {/* Menggunakan fungsi render icon yang baru */}
+                    {renderStatusIcon(s)}
 
                     {/* File name */}
                     <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-xs font-medium truncate ${
-                          s.selected ? "text-primary" : "dark:text-textPrimary text-gray-800"
-                        }`}
-                      >
-                        {s.name}
-                      </p>
+                      <div className="flex items-center">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center">
+                          <HiOutlineDocumentText className="text-primary text-lg" />
+                        </div>
+                        <p
+                          className={`text-xs font-medium truncate ${
+                            s.selected
+                              ? "text-primary"
+                              : "dark:text-textPrimary text-gray-800"
+                          }`}
+                        >
+                          {s.name}
+                        </p>
+                      </div>
                       {s.status === "analyzing" && (
                         <p className="dark:text-textSecondary text-[10px]">
                           Analyzing...
