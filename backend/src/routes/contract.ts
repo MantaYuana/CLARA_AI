@@ -7,11 +7,6 @@
  *   - application/json: { text, question }
  *
  * Pipeline: OCR → segment + embed + store clauses → guardrail → hybrid retrieval → Gemini reasoning
- *
- * @swagger
- * tags:
- *   name: Contract
- *   description: Full contract review pipeline
  */
 import { Router, Request, Response } from "express";
 import multer from "multer";
@@ -24,12 +19,11 @@ import { hybridRetrieval } from "../services/retrieval/hybridRetrieval";
 import { reason } from "../services/reasoning/reasoningService";
 import { getSession } from "../config/neo4j";
 import { TaskType } from "@google/generative-ai";
-import { success, error as apiError } from "../utils/response";
 
 const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
 });
 
 const TextBodySchema = z.object({
@@ -40,9 +34,9 @@ const TextBodySchema = z.object({
     .default("Analisis kontrak ini dan temukan klausula yang berpotensi merugikan."),
 });
 
+// Store clauses as ContractClause nodes in Neo4j
 async function storeClauses(
   documentId: string,
-  userId: string,
   clauses: Awaited<ReturnType<typeof processUploadedFile>>["clauses"],
 ): Promise<void> {
   const session = await getSession();
@@ -55,14 +49,13 @@ async function storeClauses(
           TaskType.RETRIEVAL_DOCUMENT,
         );
       } catch {
-        // Skip embedding if API fails
+        // Skip embedding if API fails; clause is still stored without vector
       }
 
       await session.run(
         `
         MERGE (cc:ContractClause { id: $id })
         SET cc.document_id = $documentId,
-            cc.user_id     = $userId,
             cc.index       = $index,
             cc.header      = $header,
             cc.content     = $content,
@@ -72,7 +65,6 @@ async function storeClauses(
         {
           id: `${documentId}-${clause.index}`,
           documentId,
-          userId,
           index: clause.index,
           header: clause.header,
           content: clause.content,
@@ -85,45 +77,10 @@ async function storeClauses(
   }
 }
 
-/**
- * @swagger
- * /api/v1/contract/review:
- *   post:
- *     summary: Review a contract document
- *     tags: [Contract]
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *               question:
- *                 type: string
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               text:
- *                 type: string
- *               question:
- *                 type: string
- *     responses:
- *       200:
- *         description: Contract analysis result
- *       400:
- *         description: Invalid input
- *       401:
- *         description: Unauthorized
- */
 router.post(
   "/review",
   upload.single("file"),
   async (req: Request, res: Response): Promise<void> => {
-    const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
-
     try {
       let contractText = "";
       const question =
@@ -131,47 +88,51 @@ router.post(
         "Analisis kontrak ini dan temukan klausula yang berpotensi merugikan.";
       const documentId = uuidv4();
 
+      // ── Extract text ──────────────────────────────────────────────────────
       if (req.file) {
         const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
         contractText = ocrResult.raw_text;
 
-        storeClauses(documentId, userId, ocrResult.clauses).catch((err) =>
+        // Store clauses in background (non-blocking for response speed)
+        storeClauses(documentId, ocrResult.clauses).catch((err) =>
           console.warn("Clause storage warning:", err?.message),
         );
 
+        // Run all pipeline steps
         const [guardrail, context] = await Promise.all([
           runGuardrailChecks(contractText),
           hybridRetrieval(question, documentId),
         ]);
         const reasoning = await reason(question, context);
 
-        res.json(
-          success({
-            document_id: documentId,
-            answer: reasoning.answer,
-            confidence: reasoning.confidence,
-            citations: reasoning.citations,
-            clauses: ocrResult.clauses.map((c) => ({
-              index: c.index,
-              header: c.header,
-              content_preview: c.content_preview,
-              pasal_references: c.pasal_references,
-            })),
-            guardrail: {
-              is_safe: guardrail.is_safe,
-              critical_violations: guardrail.critical_violations,
-              warning_count: guardrail.warning_count,
-              all_checks: guardrail.checks,
-            },
-            language: "id",
-          }),
-        );
+        res.json({
+          document_id: documentId,
+          answer: reasoning.answer,
+          confidence: reasoning.confidence,
+          citations: reasoning.citations,
+          clauses: ocrResult.clauses.map((c) => ({
+            index: c.index,
+            header: c.header,
+            content_preview: c.content_preview,
+            pasal_references: c.pasal_references,
+          })),
+          guardrail: {
+            is_safe: guardrail.is_safe,
+            critical_violations: guardrail.critical_violations,
+            warning_count: guardrail.warning_count,
+            all_checks: guardrail.checks,
+          },
+          language: "id",
+        });
         return;
       }
 
+      // ── Text-only path ────────────────────────────────────────────────────
       const parsed = TextBodySchema.safeParse(req.body);
       if (!parsed.success || (!parsed.data.text && !req.file)) {
-        res.status(400).json(apiError("INVALID_INPUT", 'Provide either a file upload or a "text" field.'));
+        res
+          .status(400)
+          .json({ error: 'Provide either a file upload or a "text" field.' });
         return;
       }
 
@@ -186,26 +147,24 @@ router.post(
         { role: "user", content: `Kontrak untuk dianalisis:\n${contractText}` },
       ]);
 
-      res.json(
-        success({
-          document_id: documentId,
-          answer: reasoning.answer,
-          confidence: reasoning.confidence,
-          citations: reasoning.citations,
-          clauses: [],
-          guardrail: {
-            is_safe: guardrail.is_safe,
-            critical_violations: guardrail.critical_violations,
-            warning_count: guardrail.warning_count,
-            all_checks: guardrail.checks,
-          },
-          language: "id",
-        }),
-      );
+      res.json({
+        document_id: documentId,
+        answer: reasoning.answer,
+        confidence: reasoning.confidence,
+        citations: reasoning.citations,
+        clauses: [],
+        guardrail: {
+          is_safe: guardrail.is_safe,
+          critical_violations: guardrail.critical_violations,
+          warning_count: guardrail.warning_count,
+          all_checks: guardrail.checks,
+        },
+        language: "id",
+      });
     } catch (err: unknown) {
       console.error("[contract/review]", err);
       const message = err instanceof Error ? err.message : "Internal server error";
-      res.status(500).json(apiError("INTERNAL", message));
+      res.status(500).json({ error: message });
     }
   },
 );
