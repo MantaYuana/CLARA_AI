@@ -254,24 +254,48 @@ const mdComponents = {
  *  @param {Object}   message
  *  @param {string}   message.role             — 'user' | 'assistant'
  *  @param {string}   message.content
+ * @param {Object} user            — for future use; can be used to show different avatars for multiple users
  *  @param {number|null} message.confidenceScore — 0–1 float (assistant only)
  *  @param {Array}    message.citations         — citation objects (assistant only)
  */
-const ChatBubble = ({ message }) => {
+const ChatBubble = ({ message, user }) => {
   const isUser = message.role === "user";
+
+  const name = user?.name || "User";
+
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
 
   if (isUser) {
     return (
       <div className="flex justify-end px-4 max-w-full">
         <div className="flex items-end gap-2 max-w-[75%]">
           <div
-            className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed
-                       bg-primary/20 text-textPrimary border border-primary/20 whitespace-pre-wrap"
+            className="px-4 py-3 rounded-2xl shadow-md dark:shadow-none rounded-br-sm text-sm leading-relaxed
+                       dark:bg-primary/20 bg-primary text-white dark:text-textPrimary border border-primary/20 whitespace-pre-wrap"
           >
             {message.content}
           </div>
-          <div className="w-7 h-7 rounded-full bg-surfaceLight border border-border flex items-center justify-center shrink-0">
-            <HiUser className="text-textSecondary text-sm" />
+          <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-primary/50 bg-surfaceLight border border-primary dark:border-border flex items-center justify-center shrink-0">
+            {user.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center
+                          bg-linear-to-br from-secondary to-primary text-white
+                          text-sm font-semibold"
+              >
+                {initials}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -283,14 +307,14 @@ const ChatBubble = ({ message }) => {
     <div className="flex justify-start px-4">
       <div className="flex items-start gap-2 max-w-[82%]">
         {/* CLARA icon */}
-        <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-1">
+        <div className="w-7 h-7 rounded-full  dark:bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-1">
           <HiOutlineSparkles className="text-primary text-sm" />
         </div>
 
         {/* Bubble */}
         <div
           className="flex flex-col gap-3 px-4 py-3 rounded-2xl rounded-bl-sm
-                        bg-surface border border-border text-textPrimary min-w-0"
+                        dark:bg-surface  border dark:shadow-none shadow-md border-primary/20 dark:border-border dark:text-textPrimary min-w-0"
         >
           {/* ── Review mode: contract label (aman / berbahaya) ── */}
           <LabelBadge label={message.label} />
@@ -326,7 +350,7 @@ export const TypingBubble = () => (
       <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
         <HiOutlineSparkles className="text-primary text-sm" />
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-surface border border-border">
+      <div className="px-4 py-3 rounded-2xl rounded-bl-sm dark:bg-surface border border-border">
         <div className="flex gap-1 items-center">
           {[0, 1, 2].map((i) => (
             <span

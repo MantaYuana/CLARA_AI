@@ -24,11 +24,11 @@ export interface GuardrailReport {
   checks: GuardrailCheck[];
   critical_violations: GuardrailCheck[]; // triggered && severity === CRITICAL
   warning_count: number;
-  is_safe: boolean;                      // true only when no CRITICAL violations
+  is_safe: boolean; // true only when no CRITICAL violations
   extracted_variables: NumericVariables; // parsed numeric terms (for API consumers)
 }
 
-// Keyword / Pattern checks 
+// Keyword / Pattern checks
 
 interface KeywordRule {
   name: string;
@@ -88,19 +88,16 @@ const KEYWORD_RULES: KeywordRule[] = [
     name: "no_dispute_resolution",
     pattern: /^(?!.*(?:pengadilan|arbitrase|mediasi|bpsk|sengketa)).*$/is,
     severity: "INFO",
-    message:
-      "Kontrak tidak memiliki klausula penyelesaian sengketa yang eksplisit.",
+    message: "Kontrak tidak memiliki klausula penyelesaian sengketa yang eksplisit.",
     advice:
       "Tambahkan klausula penyelesaian sengketa: tahapan musyawarah → mediasi → arbitrase/pengadilan, beserta yurisdiksi yang berlaku.",
     legal_basis: "Praktik terbaik hukum kontrak Indonesia",
   },
 ];
 
-// Numeric checks from Neo4j statutory limits 
+// Numeric checks from Neo4j statutory limits
 
-async function runNumericChecks(
-  extracted: NumericVariables,
-): Promise<GuardrailCheck[]> {
+async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailCheck[]> {
   const checks: GuardrailCheck[] = [];
   const session = await getSession();
 
@@ -124,11 +121,11 @@ async function runNumericChecks(
     });
 
     // Fallback statutory caps if Neo4j has no data yet
-    if (!limits.max_interest) limits.max_interest = 2.0;  // OJK: 2%/bulan
-    if (!limits.max_penalty) limits.max_penalty = 5.0;  // OJK: 5%/bulan
-    if (!limits.max_duration) limits.max_duration = 2.0;  // UU 13/2003 Pasal 59
+    if (!limits.max_interest) limits.max_interest = 2.0; // OJK: 2%/bulan
+    if (!limits.max_penalty) limits.max_penalty = 5.0; // OJK: 5%/bulan
+    if (!limits.max_duration) limits.max_duration = 2.0; // UU 13/2003 Pasal 59
 
-    // Interest rate 
+    // Interest rate
     if (extracted.interest_percent_per_month !== undefined) {
       const exceeded = extracted.interest_percent_per_month > limits.max_interest;
       checks.push({
@@ -145,7 +142,7 @@ async function runNumericChecks(
       });
     }
 
-    // Penalty rate 
+    // Penalty rate
     if (extracted.penalty_percent_per_month !== undefined) {
       const exceeded = extracted.penalty_percent_per_month > limits.max_penalty;
       checks.push({
@@ -162,7 +159,7 @@ async function runNumericChecks(
       });
     }
 
-    // Late interest per day 
+    // Late interest per day
     if (extracted.late_interest_percent_per_day !== undefined) {
       // OJK limit: 0.1%/hari (equivalent to ~3%/bulan)
       const MAX_LATE_DAY = 0.1;
@@ -181,7 +178,7 @@ async function runNumericChecks(
       });
     }
 
-    // Retention percentage 
+    // Retention percentage
     if (extracted.retention_percent !== undefined) {
       // Standard construction/service: retention ≤ 5%
       const MAX_RETENTION = 5;
@@ -200,7 +197,7 @@ async function runNumericChecks(
       });
     }
 
-    // Down payment percentage 
+    // Down payment percentage
     if (extracted.dp_percent !== undefined) {
       // Minimum DP for vendor protection: ≥ 20%; maximum upfront to buyer: ≤ 50%
       const tooLow = extracted.dp_percent < 20;
@@ -221,7 +218,7 @@ async function runNumericChecks(
       }
     }
 
-    // Penalty lump-sum  
+    // Penalty lump-sum
     if (extracted.penalty_lump_sum_idr !== undefined) {
       // Flag nominal penalties > Rp 500 juta for review
       const THRESHOLD_IDR = 500_000_000;
@@ -240,7 +237,7 @@ async function runNumericChecks(
       });
     }
 
-    // PKWT duration 
+    // PKWT duration
     if (extracted.pkwt_duration_years !== undefined) {
       const exceeded = extracted.pkwt_duration_years > limits.max_duration;
       checks.push({
@@ -263,18 +260,15 @@ async function runNumericChecks(
   return checks;
 }
 
-// Main export 
+// Main export
 
-export async function runGuardrailChecks(
-  contractText: string,
-): Promise<GuardrailReport> {
+export async function runGuardrailChecks(contractText: string): Promise<GuardrailReport> {
   const allChecks: GuardrailCheck[] = [];
 
   // 1. Keyword / pattern checks
   for (const rule of KEYWORD_RULES) {
     // Skip the "no_dispute_resolution" info check for short texts
-    if (rule.name === "no_dispute_resolution" && contractText.length < 200)
-      continue;
+    if (rule.name === "no_dispute_resolution" && contractText.length < 200) continue;
     const triggered = rule.pattern.test(contractText);
     allChecks.push({
       name: rule.name,
@@ -310,5 +304,62 @@ export async function runGuardrailChecks(
     warning_count,
     is_safe: critical_violations.length === 0,
     extracted_variables: extracted,
+  };
+}
+
+/**
+ * Phase 2 guardrail entry point — used by POST /api/v1/contract/validate.
+ *
+ * Runs keyword checks on the raw contract text (same as runGuardrailChecks)
+ * but uses the **caller-supplied** numeric variables instead of auto-extracting
+ * them from the text.  This lets users correct OCR mis-reads (e.g. 50% → 5%)
+ * before the deterministic limit checks are executed.
+ *
+ * @param contractText  Raw OCR text from Phase 1 (for keyword pattern checks)
+ * @param variables     User-corrected NumericVariables from the frontend
+ */
+export async function runGuardrailChecksWithVariables(
+  contractText: string,
+  variables: Partial<NumericVariables>,
+): Promise<GuardrailReport> {
+  const allChecks: GuardrailCheck[] = [];
+
+  // 1. Keyword / pattern checks (identical to runGuardrailChecks)
+  for (const rule of KEYWORD_RULES) {
+    if (rule.name === "no_dispute_resolution" && contractText.length < 200) continue;
+    const triggered = rule.pattern.test(contractText);
+    allChecks.push({
+      name: rule.name,
+      triggered,
+      severity: rule.severity,
+      message: triggered
+        ? rule.message
+        : `Tidak ditemukan: ${rule.name.replace(/_/g, " ")}`,
+      advice: triggered ? rule.advice : "",
+      legal_basis: rule.legal_basis,
+    });
+  }
+
+  // 2. Numeric checks — use caller-supplied (corrected) variables
+  try {
+    const numericChecks = await runNumericChecks(variables as NumericVariables);
+    allChecks.push(...numericChecks);
+  } catch {
+    // Neo4j not available — skip numeric checks silently
+  }
+
+  const critical_violations = allChecks.filter(
+    (c) => c.triggered && c.severity === "CRITICAL",
+  );
+  const warning_count = allChecks.filter(
+    (c) => c.triggered && c.severity === "WARNING",
+  ).length;
+
+  return {
+    checks: allChecks,
+    critical_violations,
+    warning_count,
+    is_safe: critical_violations.length === 0,
+    extracted_variables: variables as NumericVariables,
   };
 }

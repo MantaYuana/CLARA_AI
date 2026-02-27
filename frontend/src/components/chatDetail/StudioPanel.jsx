@@ -38,15 +38,15 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
 
   return (
     <div
-      className={`flex flex-col bg-background border border-border rounded-2xl overflow-hidden
-                  transition-all duration-300 shrink-0 h-full
-                  ${collapsed ? "w-12" : "w-full lg:w-80"}`}
+      className={`flex flex-col shadow-md border-primary dark:bg-background border dark:border-border rounded-2xl overflow-hidden
+                    transition-all duration-300 shrink-0 h-full
+                    ${collapsed ? "w-12" : "w-full lg:w-80"}`}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center px-3 py-3 border-b border-border shrink-0">
         <button
           onClick={() => setCollapsed((p) => !p)}
-          className="p-1.5 rounded-lg text-textSecondary hover:text-textPrimary hover:bg-surfaceLight transition-colors"
+          className="p-1.5 rounded-lg cursor-pointer dark:text-textSecondary dark:hover:text-textPrimary hover:bg-gray-200 dark:hover:bg-surfaceLight transition-colors"
           aria-label={collapsed ? "Expand panel" : "Collapse panel"}
         >
           {collapsed ? (
@@ -56,7 +56,7 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
           )}
         </button>
         {!collapsed && (
-          <span className="text-textPrimary text-sm font-semibold ml-2">
+          <span className="dark:text-textPrimary text-sm font-semibold ml-2">
             Mode
           </span>
         )}
@@ -73,8 +73,8 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
               title={m.label}
               className={`p-2 rounded-lg transition-colors ${
                 activeMode === m.id
-                  ? "bg-primary/20 text-primary"
-                  : "text-textSecondary hover:text-textPrimary hover:bg-surface"
+                  ? "dark:bg-primary/20 dark:text-primary"
+                  : "dark:text-textSecondary hover:text-textPrimary hover:bg-surface"
               }`}
             >
               {m.icon}
@@ -88,20 +88,20 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
             <button
               key={m.id}
               onClick={() => onSetMode(m.id === activeMode ? null : m.id)}
-              className={`w-full text-left flex flex-col gap-2 p-3 rounded-xl border
+              className={`w-full text-left flex flex-col gap-2 p-3 cursor-pointer rounded-xl border
                           transition-all duration-200
                           ${
                             activeMode === m.id
-                              ? "bg-primary/15 border-primary/40"
-                              : "border-border hover:border-primary/30 hover:bg-surface"
+                              ? "dark:bg-primary/15 bg-primary/10 border-primary/40"
+                              : "dark:border-border dark:hover:border-primary/30 border-gray-200 hover:bg-gray-200 dark:hover:bg-surface"
                           }`}
             >
               <div className="flex items-center gap-2">
                 <div
                   className={`p-1.5 rounded-lg transition-colors ${
                     activeMode === m.id
-                      ? "bg-primary/30 text-primary"
-                      : "bg-surfaceLight text-textSecondary"
+                      ? "dark:bg-primary/30 bg-primary text-white dark:text-primary"
+                      : "dark:bg-surfaceLight bg-secondary/30 text-gray-500 dark:text-textSecondary"
                   }`}
                 >
                   {m.icon}
@@ -109,28 +109,28 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
                 <span
                   className={`text-sm font-semibold ${
                     activeMode === m.id
-                      ? "text-textPrimary"
-                      : "text-textSecondary"
+                      ? "dark:text-textPrimary"
+                      : "dark:text-textSecondary"
                   }`}
                 >
                   {m.label}
                 </span>
               </div>
-              <p className="text-xs text-textSecondary leading-relaxed">
+              <p className="text-xs text-gray-700 dark:text-textSecondary leading-relaxed">
                 {m.description}
               </p>
             </button>
           ))}
 
           {/* Active mode indicator */}
-          <div className="mt-2 p-3 rounded-xl border border-border bg-background">
+          <div className="mt-2 p-3 rounded-xl border border-gray-500 dark:border-border dark:bg-background">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs text-textSecondary font-medium">
+              <span className="text-xs dark:text-textSecondary font-medium">
                 Active Mode
               </span>
             </div>
-            <p className="text-xs text-textPrimary">
+            <p className="text-xs text-gray-700 dark:text-textPrimary">
               {currentMode
                 ? `${currentMode.label} — Upload files and ask questions.`
                 : "No mode selected. Choose a mode to get started."}
@@ -140,8 +140,8 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
           {/* Output placeholder */}
           {!activeMode && (
             <div className="flex-1 flex flex-col items-center justify-center py-8 gap-2 text-center">
-              <HiOutlineCheckCircle className="text-textSecondary/30 text-4xl" />
-              <p className="text-textSecondary/60 text-xs leading-relaxed">
+              <HiOutlineCheckCircle className="dark:text-textSecondary/30 text-textSecondary text-4xl" />
+              <p className="dark:text-textSecondary/60 text-textSecondary text-xs leading-relaxed">
                 File output will be saved here.
                 <br />
                 After adding sources, choose a feature to get started.

@@ -59,10 +59,10 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
   const canSend = value.trim().length > 0 && !isLoading;
 
   return (
-    <div className="shrink-0 border-t border-border bg-background px-4 py-3">
+    <div className="shrink-0 border-t border-primary dark:border-border dark:bg-background px-4 py-3">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex items-center gap-3 bg-surface border border-border rounded-2xl px-4 py-3
+        className="flex items-center gap-3  dark:bg-surface border border-border rounded-2xl px-4 py-3
                    focus-within:border-primary/50 transition-colors duration-200"
       >
         {/* Textarea */}
@@ -80,7 +80,7 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
           }
           rows={1}
           disabled={isLoading}
-          className="flex-1   bg-transparent text-textPrimary text-sm placeholder-textSecondary
+          className="flex-1   bg-transparent dark:text-textPrimary text-sm placeholder-textSecondary
                      outline-none resize-none leading-relaxed max-h-28
                      disabled:opacity-50"
         />
@@ -121,7 +121,7 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
       )}
 
       {/* Disclaimer */}
-      <p className="text-center text-xs text-textSecondary/50 mt-2">
+      <p className="text-center text-xs text-textSecondary dark:text-textSecondary/50 mt-2">
         CLARA AI can be inaccurate. Please double check its responses.
       </p>
     </div>
