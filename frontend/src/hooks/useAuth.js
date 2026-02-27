@@ -20,7 +20,6 @@ export const useAuth = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log("Auth response:", res);
 
       setUser(res.data.data);
     } catch (error) {

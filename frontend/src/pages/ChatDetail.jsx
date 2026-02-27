@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import ChatDetailTopbar from "../components/chatDetail/ChatDetailTopbar";
@@ -7,6 +7,7 @@ import ChatPanel from "../components/chatDetail/ChatPanel";
 import StudioPanel from "../components/chatDetail/StudioPanel";
 import useSources from "../hooks/useSources";
 import useChat from "../hooks/useChat";
+import { useAuth } from "../hooks/useAuth";
 
 const TABS = ["Sources", "Chat", "Studio"];
 
@@ -17,6 +18,7 @@ const TABS = ["Sources", "Chat", "Studio"];
 const ChatDetail = () => {
   const { id } = useParams();
   const [mobileTab, setMobileTab] = useState("Chat");
+  const { user, loading } = useAuth();
 
   const { sources, selectedCount, processFiles, toggleSelect, removeSource } =
     useSources();
@@ -33,7 +35,7 @@ const ChatDetail = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-backgroundBlack font-poppins overflow-hidden">
+    <div className="h-screen flex flex-col dark:bg-backgroundBlack font-poppins overflow-hidden">
       <Toaster
         position="top-right"
         toastOptions={{
@@ -47,7 +49,7 @@ const ChatDetail = () => {
 
       {/* ── Topbar ──────────────────────────────────────────────────────── */}
       {/* TODO: replace "Untitled Project" with fetched project title using `id` */}
-      <ChatDetailTopbar projectTitle="Untitled Project" />
+      <ChatDetailTopbar projectTitle="Untitled Project" user={user} />
 
       {/* ── Mobile tab bar (hidden on lg+) ───────────────────────────────── */}
       <div className="flex lg:hidden border-b border-border bg-backgroundBlack px-4 shrink-0">
@@ -68,7 +70,7 @@ const ChatDetail = () => {
       </div>
 
       {/* ── 3-panel area ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex gap-4 p-4 pb-4 overflow-hidden">
+      <div className="flex-1 flex gap-4 py-4 px-10 pb-4 overflow-hidden">
         {/* Left — Sources */}
         {/* Desktop: fixed width, collapsible | Mobile: hidden/shown via tab, full width */}
         <div
@@ -93,6 +95,7 @@ const ChatDetail = () => {
             isLoading={isLoading}
             onSend={handleSend}
             selectedCount={selectedCount}
+            user={user}
           />
         </div>
 

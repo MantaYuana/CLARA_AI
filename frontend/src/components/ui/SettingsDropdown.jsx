@@ -54,7 +54,7 @@ const SettingsDropdown = ({ onSelect }) => {
       {/* Trigger button */}
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
+        className={`flex cursor-pointer items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
                     transition-all duration-200 border
                     ${
                       open
@@ -65,7 +65,7 @@ const SettingsDropdown = ({ onSelect }) => {
         <HiOutlineCog6Tooth
           className={`text-base transition-transform duration-300 ${open ? "rotate-90" : ""}`}
         />
-        <span className="hidden sm:inline">Settings</span>
+        <span className="hidden xl:inline">Settings</span>
       </button>
 
       {/* Dropdown panel */}
