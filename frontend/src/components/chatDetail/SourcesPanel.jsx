@@ -42,22 +42,22 @@ const SourcesPanel = ({
   const [docsLoading, setDocsLoading] = useState(false);
   const [docsError, setDocsError] = useState(null);
 
-  useEffect(() => {
-    const loadDocs = async () => {
-      setDocsLoading(true);
-      setDocsError(null);
-      try {
-        const data = await fetchUserDocuments();
-        setUserDocuments(data);
-      } catch (err) {
-        console.error("[SourcesPanel] Failed to load user documents:", err);
-        setDocsError("Failed to load documents.");
-      } finally {
-        setDocsLoading(false);
-      }
-    };
-    loadDocs();
-  }, []);
+  // useEffect(() => {
+  //   const loadDocs = async () => {
+  //     setDocsLoading(true);
+  //     setDocsError(null);
+  //     try {
+  //       const data = await fetchUserDocuments();
+  //       setUserDocuments(data);
+  //     } catch (err) {
+  //       console.error("[SourcesPanel] Failed to load user documents:", err);
+  //       setDocsError("Failed to load documents.");
+  //     } finally {
+  //       setDocsLoading(false);
+  //     }
+  //   };
+  //   loadDocs();
+  // }, []);
 
   useEffect(() => {
     const newReadyIds = [];
@@ -280,7 +280,7 @@ const SourcesPanel = ({
             )}
 
             {/* ── My Documents Section ──────────────────────────────────── */}
-            <div className="mt-2 border-t border-border/40 pt-3">
+            {/* <div className="mt-2 border-t border-border/40 pt-3">
               <div className="flex items-center gap-1.5 mb-2">
                 <HiOutlineFolder className="text-textSecondary text-sm" />
                 <span className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
@@ -327,7 +327,7 @@ const SourcesPanel = ({
                   ))}
                 </ul>
               )}
-            </div>
+            </div> */}
           </div>
         )}
       </div>

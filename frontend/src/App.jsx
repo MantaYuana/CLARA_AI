@@ -5,11 +5,13 @@ import Login from "./pages/Login";
 import Files from "./pages/Files";
 import ChatDetail from "./pages/ChatDetail";
 import AuthCallback from "./pages/AuthCallback";
+import LandingPage from "./pages/LandingPage";
 
 const App = () => {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/landing-page" element={<LandingPage />} />
       <Route path="/auth" element={<Login />} />
       <Route path="/my-files" element={<Files />} />
       <Route path="/chat/:id" element={<ChatDetail />} />

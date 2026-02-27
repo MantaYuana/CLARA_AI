@@ -55,7 +55,7 @@ const ChatDetailTopbar = ({
   };
 
   return (
-    <header className="flex items-center justify-between gap-4 px-4 md:px-6 lg:px-10 py-3 bg-white dark:bg-backgroundBlack border-b border-gray-300 dark:border-border shrink-0 z-40">
+    <header className="relative flex items-center justify-between gap-4 px-4 md:px-6 lg:px-10 py-3 bg-white dark:bg-backgroundBlack border-b border-gray-300 dark:border-border shrink-0 z-40">
       {/* Left — Logo */}
       <div className="shrink-0">
         <Link to="/">
@@ -66,7 +66,7 @@ const ChatDetailTopbar = ({
       </div>
 
       {/* Center — Project title */}
-      <div className="flex-1 flex justify-center min-w-0 px-2">
+      <div className="absolute left-1/2 transform -translate-x-1/2 px-2 min-w-0">
         <span className="dark:text-textPrimary text-xs md:text-sm font-medium truncate">
           {projectTitle}
         </span>
@@ -100,7 +100,9 @@ const ChatDetailTopbar = ({
           )}
         </button>
 
-        <SettingsDropdown />
+        <div className="hidden md:block">
+          <SettingsDropdown />
+        </div>
 
         <div className="w-px h-4 md:h-5 bg-border" />
 
