@@ -385,7 +385,7 @@ router.post(
   },
 );
 
-// ── POST /api/v1/contract/validate  (Phase 2) ────────────────────────────────────
+//   POST /api/v1/contract/validate  (Phase 2)                   
 //
 // Accepts corrected numeric variables from the frontend OCR-validation card,
 // runs the deterministic guardrail checks, performs hybrid retrieval, and
