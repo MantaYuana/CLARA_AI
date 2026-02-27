@@ -30,6 +30,7 @@ export interface DrafterRequest {
   session_id: string;
   message: string;
   history: ConversationTurn[];
+  userId?: string; // set from JWT auth
 }
 
 export interface DrafterResponse {
@@ -39,6 +40,11 @@ export interface DrafterResponse {
   clarifying_questions?: string[];
   draft?: string;
   document_number?: string;
+  guardrail?: {
+    is_safe: boolean;
+    warning_count: number;
+    critical_violations: unknown[];
+  };
 }
 
 interface ExtractedFields {
@@ -158,30 +164,107 @@ Kembalikan JSON. Gunakan null untuk field yang belum diketahui.`;
   }
 }
 
-// Step 3: Determine clarifying questions 
+// ── Step 3: Confidence-based completeness assessment ───────────────────────────
 
-function buildClarifyingQuestions(
+function assessCompleteness(
   fields: ExtractedFields,
   documentType: DocumentType,
-): string[] {
-  const questions: string[] = [];
-  if (!fields.party_a_name)
-    questions.push("Apa nama lengkap/perusahaan Pihak Pertama (Anda)?");
-  if (!fields.party_b_name)
-    questions.push("Apa nama lengkap/perusahaan Pihak Kedua (mitra Anda)?");
-  if (!fields.scope)
-    questions.push("Apa ruang lingkup atau tujuan utama kerja sama ini?");
-  if (!fields.duration)
-    questions.push(
-      "Berapa lama jangka waktu perjanjian ini? (contoh: 1 tahun, 24 bulan)",
-    );
-  if (documentType === "PKS" && !fields.value) {
-    questions.push("Berapa nilai/harga kesepakatan dalam perjanjian ini?");
-  }
-  return questions;
+): { score: number; missingCritical: string[] } {
+  const criticalFields = ["party_a_name", "party_b_name", "scope", "duration"];
+  const optionalFields =
+    documentType === "PKS" ? ["value", "jurisdiction"] : ["jurisdiction"];
+
+  const missingCritical = criticalFields.filter((f) => !fields[f]);
+  const presentOptional = optionalFields.filter((f) => !!fields[f]).length;
+
+  const criticalScore = (criticalFields.length - missingCritical.length) / criticalFields.length;
+  const optionalScore = optionalFields.length > 0 ? (presentOptional / optionalFields.length) * 0.2 : 0.2;
+
+  return {
+    score: Math.min(1, criticalScore * 0.8 + optionalScore),
+    missingCritical,
+  };
 }
 
-// Step 4: Fetch clause templates from Neo4j
+// ── Step 4: Generate a single proactive question ────────────────────────────────
+
+async function generateProactiveQuestion(
+  _fields: ExtractedFields,
+  history: ConversationTurn[],
+  documentType: DocumentType,
+  missingCritical: string[],
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
+  const conversationText = history
+    .slice(-6)
+    .map((h) => `${h.role === "user" ? "Pengguna" : "CLARA"}: ${h.content}`)
+    .join("\n");
+
+  const fieldLabels: Record<string, string> = {
+    party_a_name: "nama pihak pertama",
+    party_b_name: "nama pihak kedua",
+    scope: "ruang lingkup kerja sama",
+    duration: "jangka waktu perjanjian",
+    value: "nilai kesepakatan (Rp)",
+    jurisdiction: "kota penyelesaian sengketa",
+    penalty: "ketentuan denda",
+  };
+
+  const topMissing = missingCritical[0];
+  const prompt = `Kamu adalah CLARA, asisten hukum AI.
+Kamu sedang membantu user membuat dokumen ${documentType}.
+
+Percakapan terbaru:
+${conversationText}
+
+Field yang masih kurang: ${missingCritical.map((f) => fieldLabels[f] ?? f).join(", ")}.
+Field terpenting yang harus ditanyakan sekarang: ${fieldLabels[topMissing] ?? topMissing}.
+
+Buatlah SATU pertanyaan yang natural, ramah, dan spesifik untuk mendapatkan informasi tersebut.
+JANGAN bertanya lebih dari satu hal sekaligus. Gunakan Bahasa Indonesia.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch {
+    return `Bisa tolong sebutkan ${fieldLabels[topMissing] ?? topMissing}?`;
+  }
+}
+
+// ── Step 4a: Persist DrafterSession in Neo4j ───────────────────────────────────
+
+async function persistDrafterSession(
+  sessionId: string,
+  userId: string,
+  fields: ExtractedFields,
+  documentType: DocumentType,
+): Promise<void> {
+  const session = await getSession();
+  try {
+    await session.run(
+      `
+      MERGE (ds:DrafterSession { id: $sessionId })
+      SET ds.user_id       = $userId,
+          ds.document_type = $documentType,
+          ds.fields        = $fields,
+          ds.updated_at    = datetime()
+      `,
+      {
+        sessionId,
+        userId,
+        documentType,
+        fields: JSON.stringify(fields),
+      },
+    );
+  } catch {
+    // Persistence is best-effort – don't block the user
+  } finally {
+    await session.close();
+  }
+}
+
+// ── Step 5: Fetch clause templates from Neo4j ─────────────────────────────────
+
 
 interface ClauseTemplate {
   id: string;
@@ -355,8 +438,10 @@ function assembleDraft(
 
 // Main export
 
+
 export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterResponse> {
   const fullHistory = [...req.history, { role: "user" as const, content: req.message }];
+  const userId = req.userId ?? "anonymous";
 
   // 1. Classify intent
   const documentType = await classifyIntent(req.message, req.history);
@@ -371,15 +456,18 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   // 3. Extract fields
   const fields = await extractFields(req.message, req.history, documentType);
 
-  // 4. Clarifying questions
-  const clarifying_questions = buildClarifyingQuestions(fields, documentType);
-  if (clarifying_questions.length > 0 && req.history.length < 6) {
-    // Allow up to 3 clarification rounds (6 turns) before forcing draft
+  // 4. Confidence gate (Module 5)
+  const { score, missingCritical } = assessCompleteness(fields, documentType);
+  const MIN_CONFIDENCE = env.DRAFTER_MIN_CONFIDENCE;
+
+  if (score < MIN_CONFIDENCE) {
+    await persistDrafterSession(req.session_id, userId, fields, documentType).catch(() => { });
+    const question = await generateProactiveQuestion(fields, req.history, documentType, missingCritical);
     return {
       status: "needs_clarification",
       document_type: documentType,
       binding_warning,
-      clarifying_questions,
+      clarifying_questions: [question],
     };
   }
 
@@ -398,11 +486,28 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   const documentNumber = generateDocumentNumber(documentType);
   const draft = assembleDraft(documentType, fields, templates, documentNumber);
 
+  // Module 6 – Guardrail on draft
+  let guardrailResult: DrafterResponse["guardrail"] | undefined;
+  try {
+    const { runGuardrailChecks } = await import("../guardrail/guardrailService");
+    const gr = await runGuardrailChecks(draft);
+    guardrailResult = {
+      is_safe: gr.is_safe,
+      warning_count: gr.warning_count,
+      critical_violations: gr.critical_violations,
+    };
+  } catch {
+    // Guardrail failure doesn't block draft delivery
+  }
+
+  await persistDrafterSession(req.session_id, userId, fields, documentType).catch(() => { });
+
   return {
     status: "draft_ready",
     document_type: documentType,
     binding_warning,
     draft,
     document_number: documentNumber,
+    guardrail: guardrailResult,
   };
 }

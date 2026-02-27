@@ -12,7 +12,7 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import { analysisQueue } from "../queues/analysisQueue";
-import { success, error } from "../utils/response";
+import { success, error as apiError } from "../utils/response";
 
 const router = Router();
 
@@ -63,21 +63,18 @@ const upload = multer({
  *         description: Job queued successfully
  *       400:
  *         description: No file provided
- *       401:
- *         description: Unauthorized
  */
 router.post(
     "/analyze",
     upload.single("file"),
     async (req: Request, res: Response): Promise<void> => {
         if (!req.file) {
-            res.status(400).json(error("MISSING_FILE", 'A file upload is required. Send a PDF or image as multipart/form-data field "file".'));
+            res.status(400).json(apiError("MISSING_FILE", 'A file upload is required. Send a PDF or image as multipart/form-data field "file".'));
             return;
         }
 
         const documentId = uuidv4();
-        // Fall back to anonymous user if auth middleware not applied
-        const userId = req.user?.userId ?? "anonymous";
+        const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
 
         try {
             const job = await analysisQueue.add("analyze", {
@@ -93,7 +90,7 @@ router.post(
         } catch (err: unknown) {
             console.error("[document/analyze]", err);
             const message = err instanceof Error ? err.message : "Internal server error";
-            res.status(500).json(error("QUEUE_ERROR", message));
+            res.status(500).json(apiError("QUEUE_ERROR", message));
         }
     },
 );
@@ -115,16 +112,15 @@ router.post(
  *         description: Job status and optional result
  *       404:
  *         description: Job not found
- *       401:
- *         description: Unauthorized
  */
 router.get(
     "/analyze/:jobId/status",
     async (req: Request, res: Response): Promise<void> => {
         try {
-            const job = await analysisQueue.getJob(req.params.jobId);
+            const jobId = req.params.jobId;
+            const job = await analysisQueue.getJob(jobId);
             if (!job) {
-                res.status(404).json(error("JOB_NOT_FOUND", `Job ${req.params.jobId} not found.`));
+                res.status(404).json(apiError("JOB_NOT_FOUND", `Job ${jobId} not found.`));
                 return;
             }
 
@@ -140,7 +136,7 @@ router.get(
         } catch (err: unknown) {
             console.error("[document/status]", err);
             const message = err instanceof Error ? err.message : "Internal server error";
-            res.status(500).json(error("STATUS_ERROR", message));
+            res.status(500).json(apiError("STATUS_ERROR", message));
         }
     },
 );

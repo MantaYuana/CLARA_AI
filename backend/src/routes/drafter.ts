@@ -13,7 +13,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { runDrafterTurn } from "../services/drafter/drafterService";
-import { success, error } from "../utils/response";
+import { success, error as apiError } from "../utils/response";
 
 const router = Router();
 
@@ -59,11 +59,11 @@ const DrafterChatSchema = z.object({
 router.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const parsed = DrafterChatSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json(error("VALIDATION_ERROR", "Invalid request body", parsed.error.flatten().fieldErrors));
+    res.status(400).json(apiError("VALIDATION_ERROR", "Invalid request body", parsed.error.flatten().fieldErrors));
     return;
   }
 
-  const userId = req.user?.userId ?? "anonymous";
+  const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
 
   try {
     const response = await runDrafterTurn({ ...parsed.data, userId });
@@ -71,7 +71,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
   } catch (err: unknown) {
     console.error("[drafter/chat]", err);
     const message = err instanceof Error ? err.message : "Internal server error";
-    res.status(500).json(error("INTERNAL", message));
+    res.status(500).json(apiError("INTERNAL", message));
   }
 });
 
