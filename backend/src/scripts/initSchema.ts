@@ -13,17 +13,22 @@ async function initSchema(): Promise<void> {
   const session = driver.session();
 
   try {
-    //  Constraints
+    // Constraints
     const constraints: string[] = [
       "CREATE CONSTRAINT law_id IF NOT EXISTS FOR (l:Law) REQUIRE l.id IS UNIQUE",
       "CREATE CONSTRAINT article_id IF NOT EXISTS FOR (a:Article) REQUIRE a.id IS UNIQUE",
       "CREATE CONSTRAINT legal_concept_name IF NOT EXISTS FOR (c:LegalConcept) REQUIRE c.name IS UNIQUE",
       "CREATE CONSTRAINT clause_template_id IF NOT EXISTS FOR (t:ClauseTemplate) REQUIRE t.id IS UNIQUE",
       "CREATE CONSTRAINT contract_clause_id IF NOT EXISTS FOR (cc:ContractClause) REQUIRE cc.id IS UNIQUE",
+      // Module 3 – User isolation
+      "CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE",
+      "CREATE CONSTRAINT drafter_session_id IF NOT EXISTS FOR (ds:DrafterSession) REQUIRE ds.id IS UNIQUE",
     ];
     for (const cql of constraints) {
       await session.run(cql);
     }
+    // Module 3 – Index on google_id for fast OAuth lookups
+    await session.run("CREATE INDEX user_google_id IF NOT EXISTS FOR (u:User) ON (u.google_id)");
 
     // vector Indexes for Article embeddings
     await session.run(`
@@ -44,7 +49,7 @@ async function initSchema(): Promise<void> {
       }}
     `);
 
-    //  Full-text Index (for BM25) 
+    // Full-text Index (for BM25) 
     await session.run(`
       CREATE FULLTEXT INDEX article_text_idx IF NOT EXISTS
       FOR (a:Article|LegalConcept) ON EACH [a.content, a.title, a.name]

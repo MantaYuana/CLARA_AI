@@ -77,12 +77,12 @@ app.use("/api/v1/document", documentRouter); // Auth optional – worker handles
 app.use("/api/v1/query", verifyToken, queryRouter);
 app.use("/api/v1/drafter", verifyToken, drafterRouter);
 
-// 404   ──
+// 404    
 app.use((_req, res) => {
     res.status(404).json({ status: "error", code: "NOT_FOUND", message: "Route not found" });
 });
 
-// Startup  ───
+// Startup   ─
 async function start(): Promise<void> {
     try {
         await verifyConnectivity();

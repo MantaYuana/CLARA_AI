@@ -231,7 +231,7 @@ JANGAN bertanya lebih dari satu hal sekaligus. Gunakan Bahasa Indonesia.`;
   }
 }
 
-// Step 4a: Persist DrafterSession in Neo4j   ───
+// Step 4a: Persist DrafterSession in Neo4j 
 
 async function persistDrafterSession(
   sessionId: string,
@@ -263,7 +263,7 @@ async function persistDrafterSession(
   }
 }
 
-// Step 5: Fetch clause templates from Neo4j   ─
+// Step 5: Fetch clause templates from Neo4j
 
 
 interface ClauseTemplate {
