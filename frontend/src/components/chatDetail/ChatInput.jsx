@@ -76,7 +76,9 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
           placeholder={
             activeMode === "review"
               ? "Ask your contract review question..."
-              : "Start typing..."
+              : activeMode === "draft"
+                ? "Bisakah kamu bantu saya membuatkan draft kontrak [JENIS KONTRAK ANDA]"
+                : "Start typing..."
           }
           rows={1}
           disabled={isLoading}

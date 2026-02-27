@@ -16,7 +16,7 @@ import { TiDocumentAdd } from "react-icons/ti";
  * Left: Clara. logo | Center: project title | Right: Back button
  *
  * Props:
- *  @param {string} projectTitle
+ * @param {string} projectTitle
  * @param {object} user  — for UserAvatar; if not passed, will useAuth() internally
  */
 const ChatDetailTopbar = ({ projectTitle = projectTitle, user = user }) => {
@@ -119,7 +119,7 @@ const ChatDetailTopbar = ({ projectTitle = projectTitle, user = user }) => {
           </button>
 
           <SettingsDropdown />
-          
+
           <div className="w-px h-5 bg-border mx-2" />
 
           <UserAvatar user={user} />
