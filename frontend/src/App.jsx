@@ -10,9 +10,7 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Login />} />
-
       <Route path="/my-files" element={<Files />} />
-      {/* TODO: replace <h1> placeholder with the real ChatDetail page component */}
       <Route path="/chat/:id" element={<ChatDetail />} />
     </Routes>
   );

@@ -16,7 +16,7 @@ import type { RetrievalResult } from "../retrieval/denseRetrieval";
 
 const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY);
 
-//  Types 
+// Types 
 
 export interface Citation {
   id: string;
@@ -36,7 +36,7 @@ export interface ReasoningResult {
   language: "id";
 }
 
-//  System Prompt 
+// System Prompt 
 
 const SYSTEM_PROMPT = `Kamu adalah CLARA (Contract & Legal AI Reasoning Assistant), asisten hukum berbasis AI yang dirancang khusus untuk membantu UMKM Indonesia memahami kontrak dan peraturan ketenagakerjaan.
 
@@ -54,7 +54,7 @@ FORMAT JAWABAN WAJIB:
 - Rekomendasi praktis
 - Catatan risiko jika ada`;
 
-//  Context builder 
+// Context builder 
 
 function buildContext(results: RetrievalResult[]): string {
   if (results.length === 0)
@@ -64,7 +64,7 @@ function buildContext(results: RetrievalResult[]): string {
     .join("\n\n---\n\n");
 }
 
-//  Citation extraction 
+// Citation extraction 
 const CITATION_PATTERN =
   /(?:Pasal\s+\d+(?:\s+ayat\s+\d+)?|UU\s+(?:No\.\s*)?\d+(?:\s+Tahun\s+\d{4})?|PP\s+(?:No\.\s*)?\d+(?:\s+Tahun\s+\d{4})?|Permenaker\s+(?:No\.\s*)?\d+(?:\s+Tahun\s+\d{4})?)/gi;
 
@@ -72,7 +72,7 @@ function countCitations(text: string): number {
   return (text.match(CITATION_PATTERN) ?? []).length;
 }
 
-//  Single reasoning path 
+// Single reasoning path 
 async function generatePath(
   prompt: string,
   systemInstruction: string,
@@ -87,7 +87,7 @@ async function generatePath(
   return result.response.text().trim();
 }
 
-//  Self-consistency loop 
+// Self-consistency loop 
 
 /**
  * Run N Gemini calls at varying temperatures to generate diverse reasoning paths.
@@ -114,7 +114,7 @@ async function selfConsistencyLoop(
   return paths.filter((p) => p.length > 0);
 }
 
-//  Entropy computation 
+// Entropy computation 
 /**
  * Compute a simplified Jensen-Shannon divergence proxy between N answer paths.
  *
@@ -164,7 +164,7 @@ function computeEntropy(paths: string[]): number {
   return Math.min(avgVariance * 500, 1.0);
 }
 
-//  Confidence level mapping 
+// Confidence level mapping 
 interface ConfidenceResult {
   score: number;
   level: ConfidenceLevel;
@@ -200,7 +200,7 @@ function mapConfidenceLevel(entropy: number, citationCount: number): ConfidenceR
   }
 }
 
-//  Main export 
+// Main export 
 
 export async function reason(
   question: string,

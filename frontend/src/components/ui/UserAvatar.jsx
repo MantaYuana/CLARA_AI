@@ -61,18 +61,18 @@ const UserAvatar = ({ user, onSignOut }) => {
       {/* Google-style user dropdown */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-border
-                     bg-surface shadow-2xl shadow-black/50 z-50 overflow-hidden
+          className="absolute right-0 top-full mt-2 w-72 rounded-2xl border dark:border-border
+                     dark:bg-surface shadow-2xl shadow-black/50 z-50 overflow-hidden
                      animate-fadeIn"
         >
           {/* Header — email + close */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
-            <span className="text-textSecondary text-xs truncate">
+            <span className="dark:text-textSecondary text-xs truncate">
               {user.email}
             </span>
             <button
               onClick={() => setOpen(false)}
-              className="p-1 rounded-full text-textSecondary hover:text-textPrimary
+              className="p-1 rounded-full dark:text-textSecondary dark:hover:text-textPrimary
                          hover:bg-surfaceLight transition-colors"
             >
               <HiOutlineXMark className="text-base" />
@@ -86,7 +86,7 @@ const UserAvatar = ({ user, onSignOut }) => {
               className="w-20 h-20 rounded-full flex items-center justify-center
                          bg-linear-to-br from-secondary to-primary text-white
                          text-2xl font-bold
-                         ring-4 ring-offset-2 ring-offset-surface ring-primary/60"
+                         ring-4 ring-offset-2 dark:ring-offset-surface ring-primary/60"
               style={{
                 background: user.photoURL
                   ? undefined
@@ -106,16 +106,16 @@ const UserAvatar = ({ user, onSignOut }) => {
 
             {/* Greeting */}
             <div className="text-center">
-              <p className="text-textPrimary font-semibold text-base">
+              <p className="dark:text-textPrimary font-semibold text-base">
                 Hi, {user.name.split(" ")[0]}!
               </p>
-              <p className="text-textSecondary text-xs mt-0.5">{user.email}</p>
+              <p className="dark:text-textSecondary text-xs mt-0.5">{user.email}</p>
             </div>
 
             {/* Manage account button */}
             <button
               className="mt-1 w-full py-2 px-4 rounded-full border border-primary/40
-                         text-primary text-sm font-medium
+                         dark:text-primary text-sm font-medium
                          hover:bg-primary/10 transition-colors duration-200"
               onClick={() => setOpen(false)}
             >

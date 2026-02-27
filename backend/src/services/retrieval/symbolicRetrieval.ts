@@ -14,7 +14,7 @@
 import { getSession } from "../../config/neo4j";
 import type { RetrievalResult } from "./denseRetrieval";
 
-// ── Individual symbolic queries ───────────────────────────────────────────────
+// Individual symbolic queries 
 
 /**
  * Checks whether "Wanprestasi" requires a prior "Somasi" step in the graph,
@@ -154,7 +154,7 @@ async function queryArticleChain(
     }
 }
 
-// ── Query intent detection ────────────────────────────────────────────────────
+// Query intent detection 
 
 interface SymbolicIntent {
     wanprestasi: boolean;
@@ -182,7 +182,7 @@ function detectIntent(query: string): SymbolicIntent {
     };
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// Main export 
 
 /**
  * Perform symbolic / graph-traversal retrieval based on the query's legal intent.

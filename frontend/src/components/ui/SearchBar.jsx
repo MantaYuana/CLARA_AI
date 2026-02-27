@@ -16,7 +16,7 @@ const SearchBar = ({ value, onChange, placeholder = "Search projects..." }) => {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-surface border border-border rounded-xl
+        className="w-full dark:bg-surface border border-border rounded-xl
                    pl-11 pr-4 py-3 text-sm text-textPrimary placeholder-textSecondary
                    outline-none transition-all duration-200
                    focus:border-primary/60 focus:ring-2 focus:ring-primary/20"

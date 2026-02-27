@@ -52,8 +52,9 @@ const SourcesPanel = ({
   return (
     <>
       <div
-        className={`flex flex-col border-r border-border bg-surface transition-all duration-300 shrink-0
-                    ${collapsed ? "w-12" : "w-60"}`}
+        className={`flex flex-col bg-background border border-border rounded-2xl overflow-hidden
+                    transition-all duration-300 shrink-0 h-full
+                    ${collapsed ? "w-12" : "w-full lg:w-80"}`}
       >
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-3 py-3 border-b border-border shrink-0">
@@ -81,7 +82,7 @@ const SourcesPanel = ({
           <div className="flex flex-col items-center py-3 gap-3">
             <button
               onClick={() => setModalOpen(true)}
-              className="p-2 rounded-lg text-textSecondary hover:text-primary hover:bg-surfaceLight transition-colors"
+              className="p-2 rounded-lg text-textSecondary hover:text-primary hover:bg-surface transition-colors"
               title="Upload File"
             >
               <HiOutlineCloudArrowUp className="text-xl" />
@@ -124,7 +125,7 @@ const SourcesPanel = ({
                                 ${
                                   s.selected
                                     ? "bg-primary/15 border border-primary/30"
-                                    : "hover:bg-surfaceLight border border-transparent"
+                                    : "hover:bg-surface border border-transparent"
                                 }
                                 ${s.status !== "ready" ? "cursor-default" : ""}`}
                   >
@@ -172,7 +173,6 @@ const SourcesPanel = ({
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onUpload={(files) => onProcessFiles(files)}
-        currentCount={sources.length}
       />
     </>
   );

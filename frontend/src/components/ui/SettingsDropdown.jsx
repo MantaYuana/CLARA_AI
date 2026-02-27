@@ -58,8 +58,8 @@ const SettingsDropdown = ({ onSelect }) => {
                     transition-all duration-200 border
                     ${
                       open
-                        ? "bg-surfaceLight text-primary border-primary/40"
-                        : "text-textSecondary border-border hover:text-textPrimary hover:bg-surface"
+                        ? "bg-surfaceLight dark:text-primary text-white border-primary/40"
+                        : "dark:text-textSecondary border-border hover:text-textPrimary hover:bg-surface"
                     }`}
       >
         <HiOutlineCog6Tooth
