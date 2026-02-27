@@ -113,29 +113,27 @@ const useChat = () => {
     }
 
     // Optimistically add user message
-    addMessage("user", message.trim());
+    addMessage("user", message.trim(), {
+      attachment:
+        mode === "review" && selectedFile
+          ? { name: selectedFile.name, size: selectedFile.size }
+          : null,
+    });
     setIsLoading(true);
 
     try {
       if (mode === "review") {
         // ── Review Contract mode ───────────────────────────────────────────
-        const {
-          content,
-          confidenceScore,
-          citations,
-          label,
-          clauses,
-          rationale,
-        } = await reviewContract({
-          file: selectedFile,
-          question: message.trim(),
-        });
+        const { content, confidenceScore, citations, label, rationale } =
+          await reviewContract({
+            file: selectedFile,
+            question: message.trim(),
+          });
 
         addMessage("assistant", content, {
           confidenceScore: confidenceScore ?? null,
           citations: citations ?? [],
           label: label ?? null,
-          clauses: clauses ?? [],
           rationale: rationale ?? null,
         });
       } else if (mode === "draft") {

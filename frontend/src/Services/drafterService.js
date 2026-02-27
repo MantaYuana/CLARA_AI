@@ -6,81 +6,41 @@ const getAuthHeader = () => {
 };
 
 /**
- * Format drafter response into structured data with formatted content
- * Handles both clarification and draft responses
+ * Parse raw drafter response data into structured fields.
+ * Returns clean content (the AI's natural language text) separately from
+ * structured metadata (status, documentType, etc.) so the UI can render
+ * each part with dedicated components instead of emoji-laden markdown strings.
  */
-const parseAndFormatDrafterResponse = (data) => {
-  // Try to parse if string (in case response is JSON string)
+const parseDrafterResponse = (data) => {
+  // Try to parse if accidentally returned as a JSON string
   let parsed = data;
   if (typeof data === "string") {
     try {
       parsed = JSON.parse(data);
-    } catch (e) {
-      // If parse fails, treat as plain text
+    } catch {
+      // Plain text fallback
       return {
         content: data,
         status: null,
         documentType: null,
         bindingWarning: false,
+        clarifyingQuestions: [],
+        draft: null,
       };
     }
   }
 
-  // Extract fields
-  const status = parsed?.status || null;
-  const documentType = parsed?.document_type || null;
-  const bindingWarning = parsed?.binding_warning || false;
-  const clarifyingQuestions = parsed?.clarifying_questions || [];
-  const draft = parsed?.draft || null;
+  const status = parsed?.status ?? null;
+  const documentType = parsed?.document_type ?? null;
+  const bindingWarning = parsed?.binding_warning ?? false;
+  const clarifyingQuestions = parsed?.clarifying_questions ?? [];
+  const draft = parsed?.draft ?? null;
 
-  // Build formatted content
-  let formattedContent = "";
-
-  // Add status indicator
-  if (status === "needs_clarification") {
-    formattedContent +=
-      "🤔 **Kami memerlukan beberapa klarifikasi sebelum membuat draft.**\n\n";
-  } else if (status === "draft_ready") {
-    formattedContent += "✅ **Draft Kontrak Siap**\n\n";
-  }
-
-  // Add document type info
-  if (documentType) {
-    formattedContent += `**Jenis Kontrak:** ${documentType}\n`;
-    if (bindingWarning) {
-      formattedContent +=
-        "⚠️ **Perhatian:** Kontrak ini memiliki klausul mengikat yang perlu review lebih lanjut.\n";
-    }
-    formattedContent += "\n";
-  }
-
-  // Add clarifying questions if any
-  if (clarifyingQuestions.length > 0) {
-    formattedContent += "**Pertanyaan Klarifikasi:**\n";
-    clarifyingQuestions.forEach((question, idx) => {
-      formattedContent += `${idx + 1}. ${question}\n`;
-    });
-    formattedContent += "\n";
-  }
-
-  // Add draft content if available
-  if (draft) {
-    formattedContent += "---\n\n";
-    formattedContent += draft;
-  }
-
-  // If no structured content, show raw message
-  if (!formattedContent.trim() && parsed?.message) {
-    formattedContent = parsed.message;
-  }
-
-  // Fallback to content field if exists
-  if (!formattedContent.trim() && parsed?.content) {
-    formattedContent = parsed.content;
-  }
+  // Natural language answer from the AI — used as the main bubble text
+  const content = parsed?.message ?? parsed?.content ?? parsed?.answer ?? "";
 
   return {
-    content: formattedContent,
+    content,
     status,
     documentType,
     bindingWarning,
@@ -97,7 +57,7 @@ const parseAndFormatDrafterResponse = (data) => {
  * @param {Object} params
  *   @param {string} session_id - unique session identifier for the draft
  *   @param {string} message - user message / clarification / draft request
- *   @param {Array} history - conversation history (array of { role, content })
+ *   @param {Array}  history - conversation history (array of { role, content })
  *
  * Returns: { content, status, documentType, bindingWarning, clarifyingQuestions, draft }
  */
@@ -110,11 +70,7 @@ export const drafterChat = async ({ session_id, message, history = [] }) => {
 
   const response = await axiosInstance.post(
     "drafter/chat",
-    {
-      session_id,
-      message,
-      history,
-    },
+    { session_id, message, history },
     { headers: { "Content-Type": "application/json", ...getAuthHeader() } },
   );
 
@@ -129,12 +85,14 @@ export const drafterChat = async ({ session_id, message, history = [] }) => {
     bindingWarning,
     clarifyingQuestions,
     draft,
-  } = parseAndFormatDrafterResponse(data);
+  } = parseDrafterResponse(data);
 
   console.log("[drafterService] Parsed →", {
-    content,
     status,
     documentType,
+    contentLength: content?.length,
+    clarifyingQuestions: clarifyingQuestions.length,
+    hasDraft: !!draft,
   });
 
   return {
