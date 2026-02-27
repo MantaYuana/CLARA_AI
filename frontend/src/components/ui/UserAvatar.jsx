@@ -14,6 +14,7 @@ import { HiOutlineXMark } from "react-icons/hi2";
 const UserAvatar = ({ user, onSignOut }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e) => {
@@ -44,7 +45,7 @@ const UserAvatar = ({ user, onSignOut }) => {
       {/* Avatar trigger button */}
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="relative w-9 h-9 rounded-full overflow-hidden
+        className="relative w-9 h-9 cursor-pointer rounded-full overflow-hidden
                    ring-2 ring-primary/50 hover:ring-primary
                    transition-all duration-200 shrink-0"
         aria-label="Open user menu"
@@ -136,13 +137,60 @@ const UserAvatar = ({ user, onSignOut }) => {
             <button
               onClick={() => {
                 setOpen(false);
-                onSignOut?.();
+                setConfirmOpen(true);
               }}
-              className="w-full text-center text-xs text-textSecondary
-                         hover:text-textPrimary transition-colors duration-150"
+              className="w-full cursor-pointer text-center text-xs text-textSecondary
+               hover:text-red-500 transition-colors duration-150"
             >
               Sign out
             </button>
+          </div>
+        </div>
+      )}
+      {/* Logout Confirmation Modal */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setConfirmOpen(false)}
+          />
+
+          {/* Modal Box */}
+          <div
+            className="relative bg-white dark:bg-surface rounded-2xl
+                 shadow-2xl w-[90%] max-w-sm p-6 animate-fadeIn"
+          >
+            <h3 className="text-lg font-semibold dark:text-textPrimary">
+              Sign out?
+            </h3>
+
+            <p className="mt-2 text-sm dark:text-textSecondary">
+              Are you sure you want to sign out from your account?
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 cursor-pointer rounded-lg text-sm
+                     dark:text-textSecondary hover:bg-gray-200
+                     dark:hover:bg-surfaceLight transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  setConfirmOpen(false);
+                  onSignOut?.();
+                }}
+                className="px-4 py-2 cursor-pointer rounded-lg text-sm font-medium
+                     bg-red-500 text-white
+                     hover:bg-red-600 transition"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
       )}

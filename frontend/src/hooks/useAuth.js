@@ -24,15 +24,21 @@ export const useAuth = () => {
       setUser(res.data.data);
     } catch (error) {
       setUser(null);
-      localStorage.removeItem("token"); 
+      localStorage.removeItem("token");
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    navigate("/login");
+  };
+
   useEffect(() => {
     getUser();
   }, [getUser]);
 
-  return { user, loading, setUser, refetchUser: getUser };
+  return { user, loading, setUser, refetchUser: getUser, logout };
 };

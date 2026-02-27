@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import ChatDetailTopbar from "../components/chatDetail/ChatDetailTopbar";
 import SourcesPanel from "../components/chatDetail/SourcesPanel";
@@ -17,13 +17,20 @@ const TABS = ["Sources", "Chat", "Studio"];
  */
 const ChatDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate(); 
   const [mobileTab, setMobileTab] = useState("Chat");
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   const { sources, selectedCount, processFiles, toggleSelect, removeSource } =
     useSources();
   const { messages, activeMode, setActiveMode, isLoading, sendChatMessage } =
     useChat();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleSend = (message) => {
     const selectedSources = sources.filter(
@@ -62,7 +69,7 @@ const ChatDetail = () => {
 
       {/* ── Topbar ──────────────────────────────────────────────────────── */}
       {/* TODO: replace "Untitled Project" with fetched project title using `id` */}
-      <ChatDetailTopbar projectTitle="Untitled Project" user={user} />
+      <ChatDetailTopbar projectTitle="Untitled Project" user={user} onLogout={logout} />
 
       {/* ── Mobile tab bar (hidden on lg+) ───────────────────────────────── */}
       <div className="flex lg:hidden border-b border-border bg-backgroundBlack px-4 shrink-0">

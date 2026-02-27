@@ -40,7 +40,6 @@ const Login = () => {
     document.body.appendChild(script);
 
     return () => {
-      // optional cleanup kalau nanti mau unmount
       const existingScript = document.querySelector(
         'script[src="/finisher-header.es5.min.js"]',
       );

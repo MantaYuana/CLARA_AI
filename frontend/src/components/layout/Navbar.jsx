@@ -11,7 +11,7 @@ const Navbar = () => {
   const location = useLocation();
   const [isDark, setIsDark] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   // Theme init
   useEffect(() => {
@@ -103,9 +103,12 @@ const Navbar = () => {
         </button>
 
         <SettingsDropdown />
+
+        <div className="w-px h-5 bg-border mx-2" />
+
         {!loading &&
           (user ? (
-            <UserAvatar user={user} />
+            <UserAvatar user={user} onSignOut={logout} />
           ) : (
             <Link
               to="/auth"
