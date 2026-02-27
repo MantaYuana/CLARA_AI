@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { LuArrowRightLeft } from "react-icons/lu";
+const apiURL = import.meta.env.VITE_API_URL;
 
 const Login = () => {
   useEffect(() => {
@@ -39,7 +40,6 @@ const Login = () => {
     document.body.appendChild(script);
 
     return () => {
-      // optional cleanup kalau nanti mau unmount
       const existingScript = document.querySelector(
         'script[src="/finisher-header.es5.min.js"]',
       );
@@ -49,9 +49,12 @@ const Login = () => {
     };
   }, []);
 
+  const handleGoogleLogin = () => {
+    window.location.href = `${apiURL}/auth/google`;
+  };
+
   return (
     <div className="header finisher-header h-screen p-4 flex items-center">
-   
       {/* RIGHT SIDE */}
       <div className="w-full h-full text-white flex flex-col items-center justify-center">
         <div className="flex items-center gap-4 mb-6">
@@ -70,7 +73,10 @@ const Login = () => {
           </p>
         </div>
 
-        <button className="px-6 py-3 border border-gray-600 rounded-lg font-medium cursor-pointer hover:bg-primary hover:border-primary duration-300 transition-colors">
+        <button
+          onClick={handleGoogleLogin}
+          className="px-6 py-3 border border-gray-600 rounded-lg font-medium cursor-pointer hover:bg-primary hover:border-primary duration-300 transition-colors"
+        >
           <div className="flex items-center gap-4">
             <FcGoogle size={24} />
             Continue with Google

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { sendMessage } from "../Services/chatService";
+import { reviewContract } from "../Services/reviewService";
+import { drafterChat } from "../Services/drafterService";
+import toast from "react-hot-toast";
 
 const INITIAL_MESSAGE = {
   id: "init",
@@ -10,54 +13,177 @@ const INITIAL_MESSAGE = {
 };
 
 /**
+ * Generate a unique session ID for draft mode
+ */
+const generateSessionId = () => {
+  return `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+/**
  * useChat — manages chat messages and active mode.
  *
- * Returns:
- *  messages        : chat message array
- *  activeMode      : 'review' | 'draft' | null
- *  setActiveMode   : setter
- *  isLoading       : boolean
- *  sendChatMessage : async ({ message, selectedSourceIds, mode }) => void
+ * Routing logic:
+ *  - mode === 'review' → calls reviewContract (POST /contract/review)
+ *                        requires: selectedFile (File object) + message (question)
+ *  - mode === 'draft'   → calls drafterChat (POST /api/v1/drafter/chat)
+ *                        requires: session_id + message + history[]
+ *  - any other mode   → calls sendMessage (POST /query)
+ *                        requires: message + optional selectedSourceIds
+ *
+ * sendChatMessage param:
+ *  { message: string, selectedSourceIds: string[], selectedFile: File|null, mode: string|null }
  */
 const useChat = () => {
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
-  const [activeMode, setActiveMode] = useState(null);
+  const [activeMode, setActiveModeState] = useState(null);
+  const [draftSessionId, setDraftSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendChatMessage = async ({ message, selectedSourceIds = [], mode }) => {
-    // Add user message immediately
-    const userMsg = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content: message,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+  const addMessage = (role, content, extras = {}) =>
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `${role[0]}-${Date.now()}`,
+        role,
+        content,
+        timestamp: new Date().toISOString(),
+        ...extras,
+      },
+    ]);
+
+  /**
+   * Wrapper for setActiveMode that generates session_id for draft mode
+   */
+  const setActiveMode = (mode) => {
+    setActiveModeState(mode);
+    if (mode === "draft") {
+      const newSessionId = generateSessionId();
+      setDraftSessionId(newSessionId);
+      console.log(
+        "[useChat] Draft mode activated with session_id:",
+        newSessionId,
+      );
+    } else {
+      setDraftSessionId(null);
+    }
+  };
+
+  /**
+   * Build conversation history from messages for drafter API
+   */
+  const buildDraftHistory = () => {
+    return messages
+      .filter((msg) => msg.id !== "init") // exclude init message
+      .map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+  };
+
+  const sendChatMessage = async ({
+    message,
+    selectedSourceIds = [],
+    selectedFile = null,
+    mode,
+  }) => {
+    // ── Validation: Review mode requires exactly one file ──────────────────
+    if (mode === "review") {
+      if (!selectedFile) {
+        toast.error(
+          "Review mode: pilih satu file terlebih dahulu dari panel Sources.",
+        );
+        return;
+      }
+      if (!message?.trim()) {
+        toast.error("Review mode: tuliskan pertanyaan review terlebih dahulu.");
+        return;
+      }
+    }
+
+    // ── Validation: Draft mode requires message ────────────────────────────
+    if (mode === "draft") {
+      if (!message?.trim()) {
+        toast.error("Draft mode: tuliskan deskripsi kontrak terlebih dahulu.");
+        return;
+      }
+      if (!draftSessionId) {
+        toast.error("Draft mode: session_id tidak ditemukan. Coba lagi.");
+        return;
+      }
+    }
+
+    // Optimistically add user message
+    addMessage("user", message.trim());
     setIsLoading(true);
 
     try {
-      const { content } = await sendMessage({
-        message,
-        fileIds: selectedSourceIds,
-        mode,
-      });
-      const aiMsg = {
-        id: `a-${Date.now()}`,
-        role: "assistant",
-        content,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `err-${Date.now()}`,
-          role: "assistant",
-          content: "Maaf, terjadi kesalahan. Silakan coba lagi.",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      if (mode === "review") {
+        // ── Review Contract mode ───────────────────────────────────────────
+        const {
+          content,
+          confidenceScore,
+          citations,
+          label,
+          clauses,
+          rationale,
+        } = await reviewContract({
+          file: selectedFile,
+          question: message.trim(),
+        });
+
+        addMessage("assistant", content, {
+          confidenceScore: confidenceScore ?? null,
+          citations: citations ?? [],
+          label: label ?? null,
+          clauses: clauses ?? [],
+          rationale: rationale ?? null,
+        });
+      } else if (mode === "draft") {
+        // ── Draft Contract mode ────────────────────────────────────────────
+        const history = buildDraftHistory();
+        const {
+          content,
+          status,
+          documentType,
+          bindingWarning,
+          clarifyingQuestions,
+          draft,
+        } = await drafterChat({
+          session_id: draftSessionId,
+          message: message.trim(),
+          history,
+        });
+
+        addMessage("assistant", content, {
+          status: status ?? null,
+          documentType: documentType ?? null,
+          bindingWarning: bindingWarning ?? false,
+          clarifyingQuestions: clarifyingQuestions ?? [],
+          draft: draft ?? null,
+        });
+      } else {
+        // ── Query mode (default) ───────────────────────────────────────────
+        const { content, confidenceScore, citations } = await sendMessage({
+          message,
+          fileIds: selectedSourceIds,
+          mode,
+        });
+
+        addMessage("assistant", content, {
+          confidenceScore: confidenceScore ?? null,
+          citations: citations ?? [],
+        });
+      }
+    } catch (err) {
+      console.error("[useChat] Error:", err?.response?.data ?? err.message);
+      const errMsg =
+        err?.response?.status === 401
+          ? "Sesi tidak valid. Silakan login kembali."
+          : err?.response?.status === 400
+            ? "Permintaan tidak valid. Pastikan file dan pertanyaan sudah benar."
+            : "Maaf, terjadi kesalahan saat menghubungi server. Silakan coba lagi.";
+
+      addMessage("assistant", errMsg);
     } finally {
       setIsLoading(false);
     }

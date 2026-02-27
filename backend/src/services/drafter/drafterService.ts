@@ -13,6 +13,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "../../config/env";
 import { getSession } from "../../config/neo4j";
+import { generateDraftPdf } from "./pdfService";
 
 const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY);
 
@@ -40,6 +41,8 @@ export interface DrafterResponse {
   clarifying_questions?: string[];
   draft?: string;
   document_number?: string;
+  pdf_base64?: string; // base64-encoded PDF (only when status === "draft_ready")
+  action_buttons?: string[]; // ["Accept", "Revise"] (only when status === "draft_ready")
   guardrail?: {
     is_safe: boolean;
     warning_count: number;
@@ -116,7 +119,7 @@ Jawab HANYA dengan satu kata: MoU, LoI, atau PKS. Jika tidak jelas, pilih MoU.`;
   return "MoU";
 }
 
-// Step 2: Extract structured fields 
+// Step 2: Extract structured fields
 
 async function extractFields(
   message: string,
@@ -164,7 +167,7 @@ Kembalikan JSON. Gunakan null untuk field yang belum diketahui.`;
   }
 }
 
-// Step 3: Confidence - based completeness assessment  
+// Step 3: Confidence - based completeness assessment
 
 function assessCompleteness(
   fields: ExtractedFields,
@@ -177,8 +180,10 @@ function assessCompleteness(
   const missingCritical = criticalFields.filter((f) => !fields[f]);
   const presentOptional = optionalFields.filter((f) => !!fields[f]).length;
 
-  const criticalScore = (criticalFields.length - missingCritical.length) / criticalFields.length;
-  const optionalScore = optionalFields.length > 0 ? (presentOptional / optionalFields.length) * 0.2 : 0.2;
+  const criticalScore =
+    (criticalFields.length - missingCritical.length) / criticalFields.length;
+  const optionalScore =
+    optionalFields.length > 0 ? (presentOptional / optionalFields.length) * 0.2 : 0.2;
 
   return {
     score: Math.min(1, criticalScore * 0.8 + optionalScore),
@@ -186,13 +191,65 @@ function assessCompleteness(
   };
 }
 
-// Step 4: Generate a single proactive question   
+// Step 3a: Detect user evasion
+
+/**
+ * Returns true if:
+ *  1. The most recent assistant turn in history asked about the same field that
+ *     is still missing (meaning the user hasn't answered it yet).
+ *  2. The most recent user turn did not provide the information.
+ *
+ * Detection heuristic: look for the field label keyword in the last assistant
+ * message, and check that the user's reply is short / vague (< 15 words and
+ * doesn't contain a noun phrase for the label).
+ */
+function detectEvasion(history: ConversationTurn[], missingCritical: string[]): boolean {
+  if (!missingCritical.length || history.length < 2) return false;
+
+  const fieldLabels: Record<string, string[]> = {
+    party_a_name: ["pihak pertama", "nama", "perusahaan", "individu"],
+    party_b_name: ["pihak kedua", "nama", "mitra"],
+    scope: ["ruang lingkup", "tujuan", "kerja sama", "lingkup"],
+    duration: ["jangka waktu", "durasi", "berapa lama", "bulan", "tahun"],
+    value: ["nilai", "harga", "berapa", "rp"],
+    jurisdiction: ["kota", "pengadilan", "yurisdiksi", "sengketa"],
+    penalty: ["denda", "penalti", "sanksi"],
+  };
+
+  const topField = missingCritical[0];
+  const keywords = fieldLabels[topField] ?? [topField];
+
+  // Find the last assistant turn
+  const lastAssistant = [...history].reverse().find((h) => h.role === "assistant");
+  if (!lastAssistant) return false;
+
+  // Check if last assistant turn mentioned the missing field
+  const assistantAsked = keywords.some((kw) =>
+    lastAssistant.content.toLowerCase().includes(kw),
+  );
+  if (!assistantAsked) return false;
+
+  // Check if the most recent user turn answered the field (simple: long enough AND contains keyword)
+  const lastUser = [...history].reverse().find((h) => h.role === "user");
+  if (!lastUser) return false;
+
+  const wordCount = lastUser.content.trim().split(/\s+/).length;
+  const containsKeyword = keywords.some((kw) =>
+    lastUser.content.toLowerCase().includes(kw),
+  );
+
+  // Evasion: short user reply that doesn't contain the requested field keyword
+  return wordCount < 15 && !containsKeyword;
+}
+
+// Step 4: Generate a single proactive question
 
 async function generateProactiveQuestion(
   _fields: ExtractedFields,
   history: ConversationTurn[],
   documentType: DocumentType,
   missingCritical: string[],
+  isEvasion = false,
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
   const conversationText = history
@@ -211,27 +268,41 @@ async function generateProactiveQuestion(
   };
 
   const topMissing = missingCritical[0];
-  const prompt = `Kamu adalah CLARA, asisten hukum AI.
+  const fieldLabel = fieldLabels[topMissing] ?? topMissing;
+
+  const evasionInstruction = isEvasion
+    ? `Pengguna tampaknya belum menjawab pertanyaan sebelumnya tentang "${fieldLabel}".
+Tanyakan kembali dengan sopan namun tegas — gunakan kata-kata yang sedikit berbeda dari sebelumnya.
+Contoh pola: "Sebelum saya lanjutkan membuat dokumennya, saya masih perlu tahu [X]. Boleh dijawab terlebih dahulu?"
+JANGAN lanjutkan ke topik lain atau menyebut field lain.`
+    : `Buatlah SATU pertanyaan yang natural, ramah, dan spesifik untuk mendapatkan informasi tersebut.
+JANGAN bertanya lebih dari satu hal sekaligus.`;
+
+  const prompt = `Kamu adalah CLARA, asisten hukum AI untuk UMKM Indonesia.
 Kamu sedang membantu user membuat dokumen ${documentType}.
 
 Percakapan terbaru:
 ${conversationText}
 
 Field yang masih kurang: ${missingCritical.map((f) => fieldLabels[f] ?? f).join(", ")}.
-Field terpenting yang harus ditanyakan sekarang: ${fieldLabels[topMissing] ?? topMissing}.
+Field terpenting yang harus ditanyakan sekarang: ${fieldLabel}.
 
-Buatlah SATU pertanyaan yang natural, ramah, dan spesifik untuk mendapatkan informasi tersebut.
-JANGAN bertanya lebih dari satu hal sekaligus. Gunakan Bahasa Indonesia.`;
+${evasionInstruction}
+
+Gunakan Bahasa Indonesia yang hangat dan profesional.`;
 
   try {
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
   } catch {
-    return `Bisa tolong sebutkan ${fieldLabels[topMissing] ?? topMissing}?`;
+    if (isEvasion) {
+      return `Mohon maaf, sebelum saya lanjutkan, saya masih perlu mengetahui ${fieldLabel}. Bisa tolong dijawab?`;
+    }
+    return `Bisa tolong sebutkan ${fieldLabel}?`;
   }
 }
 
-// Step 4a: Persist DrafterSession in Neo4j 
+// Step 4a: Persist DrafterSession in Neo4j
 
 async function persistDrafterSession(
   sessionId: string,
@@ -264,7 +335,6 @@ async function persistDrafterSession(
 }
 
 // Step 5: Fetch clause templates from Neo4j
-
 
 interface ClauseTemplate {
   id: string;
@@ -438,7 +508,6 @@ function assembleDraft(
 
 // Main export
 
-
 export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterResponse> {
   const fullHistory = [...req.history, { role: "user" as const, content: req.message }];
   const userId = req.userId ?? "anonymous";
@@ -461,8 +530,17 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   const MIN_CONFIDENCE = env.DRAFTER_MIN_CONFIDENCE;
 
   if (score < MIN_CONFIDENCE) {
-    await persistDrafterSession(req.session_id, userId, fields, documentType).catch(() => { });
-    const question = await generateProactiveQuestion(fields, req.history, documentType, missingCritical);
+    await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
+      () => {},
+    );
+    const isEvasion = detectEvasion(req.history, missingCritical);
+    const question = await generateProactiveQuestion(
+      fields,
+      req.history,
+      documentType,
+      missingCritical,
+      isEvasion,
+    );
     return {
       status: "needs_clarification",
       document_type: documentType,
@@ -486,6 +564,14 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   const documentNumber = generateDocumentNumber(documentType);
   const draft = assembleDraft(documentType, fields, templates, documentNumber);
 
+  // 6a. Generate PDF (best-effort — never blocks draft delivery)
+  let pdf_base64: string | undefined;
+  try {
+    pdf_base64 = generateDraftPdf(draft);
+  } catch (pdfErr) {
+    console.warn("[drafter] PDF generation failed (non-fatal):", pdfErr);
+  }
+
   // Module 6 – Guardrail on draft
   let guardrailResult: DrafterResponse["guardrail"] | undefined;
   try {
@@ -500,7 +586,9 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
     // Guardrail failure doesn't block draft delivery
   }
 
-  await persistDrafterSession(req.session_id, userId, fields, documentType).catch(() => { });
+  await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
+    () => {},
+  );
 
   return {
     status: "draft_ready",
@@ -508,6 +596,8 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
     binding_warning,
     draft,
     document_number: documentNumber,
+    pdf_base64,
+    action_buttons: pdf_base64 ? ["Accept", "Revise"] : undefined,
     guardrail: guardrailResult,
   };
 }

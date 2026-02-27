@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import ChatDetailTopbar from "../components/chatDetail/ChatDetailTopbar";
 import SourcesPanel from "../components/chatDetail/SourcesPanel";
@@ -7,6 +7,7 @@ import ChatPanel from "../components/chatDetail/ChatPanel";
 import StudioPanel from "../components/chatDetail/StudioPanel";
 import useSources from "../hooks/useSources";
 import useChat from "../hooks/useChat";
+import { useAuth } from "../hooks/useAuth";
 
 const TABS = ["Sources", "Chat", "Studio"];
 
@@ -16,22 +17,45 @@ const TABS = ["Sources", "Chat", "Studio"];
  */
 const ChatDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate(); 
   const [mobileTab, setMobileTab] = useState("Chat");
+  const { user, loading, logout } = useAuth();
 
   const { sources, selectedCount, processFiles, toggleSelect, removeSource } =
     useSources();
   const { messages, activeMode, setActiveMode, isLoading, sendChatMessage } =
     useChat();
 
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
   const handleSend = (message) => {
-    const selectedSourceIds = sources
-      .filter((s) => s.selected && s.status === "ready")
-      .map((s) => s.id);
-    sendChatMessage({ message, selectedSourceIds, mode: activeMode });
+    const selectedSources = sources.filter(
+      (s) => s.selected && s.status === "ready",
+    );
+
+    // For review mode — pass the actual File object (endpoint requires the file directly)
+    const selectedFile =
+      selectedSources.length > 0 ? selectedSources[0].file : null;
+
+    // For query mode — pass real documentIds from analyze response
+    const selectedSourceIds = selectedSources
+      .filter((s) => s.documentId)
+      .map((s) => s.documentId);
+
+    sendChatMessage({
+      message,
+      selectedSourceIds,
+      selectedFile,
+      mode: activeMode,
+    });
   };
 
   return (
-    <div className="h-screen flex flex-col bg-backgroundBlack font-poppins overflow-hidden">
+    <div className="h-screen flex flex-col dark:bg-backgroundBlack font-poppins overflow-hidden">
       <Toaster
         position="top-right"
         toastOptions={{
@@ -45,7 +69,7 @@ const ChatDetail = () => {
 
       {/* ── Topbar ──────────────────────────────────────────────────────── */}
       {/* TODO: replace "Untitled Project" with fetched project title using `id` */}
-      <ChatDetailTopbar projectTitle="Untitled Project" />
+      <ChatDetailTopbar projectTitle="Untitled Project" user={user} onLogout={logout} />
 
       {/* ── Mobile tab bar (hidden on lg+) ───────────────────────────────── */}
       <div className="flex lg:hidden border-b border-border bg-backgroundBlack px-4 shrink-0">
@@ -66,7 +90,7 @@ const ChatDetail = () => {
       </div>
 
       {/* ── 3-panel area ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex gap-4 p-4 pb-4 overflow-hidden">
+      <div className="flex-1 flex gap-4 py-4 px-10 pb-4 overflow-hidden">
         {/* Left — Sources */}
         {/* Desktop: fixed width, collapsible | Mobile: hidden/shown via tab, full width */}
         <div
@@ -91,6 +115,8 @@ const ChatDetail = () => {
             isLoading={isLoading}
             onSend={handleSend}
             selectedCount={selectedCount}
+            user={user}
+            activeMode={activeMode}
           />
         </div>
 

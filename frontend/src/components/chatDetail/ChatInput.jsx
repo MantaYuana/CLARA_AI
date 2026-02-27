@@ -19,9 +19,10 @@ const schema = yup.object({
  * Props:
  *  @param {Function} onSend        — (message: string) => void
  *  @param {boolean}  isLoading     — disables input while AI is responding
- *  @param {number}   selectedCount — number of selected sources to display
+ *  @param {number}   selectedCount — number of selected sources
+ *  @param {string|null} activeMode — current mode ('review' | 'draft' | null)
  */
-const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
+const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
   const {
     register,
     handleSubmit,
@@ -58,10 +59,10 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
   const canSend = value.trim().length > 0 && !isLoading;
 
   return (
-    <div className="shrink-0 border-t border-border bg-background px-4 py-3">
+    <div className="shrink-0 border-t border-primary dark:border-border dark:bg-background px-4 py-3">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex items-center gap-3 bg-surface border border-border rounded-2xl px-4 py-3
+        className="flex items-center gap-3  dark:bg-surface border border-border rounded-2xl px-4 py-3
                    focus-within:border-primary/50 transition-colors duration-200"
       >
         {/* Textarea */}
@@ -72,10 +73,16 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
             textareaRef.current = el;
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Start typing..."
+          placeholder={
+            activeMode === "review"
+              ? "Ask your contract review question..."
+              : activeMode === "draft"
+                ? "Bisakah kamu bantu saya membuatkan draft kontrak [JENIS KONTRAK ANDA]"
+                : "Start typing..."
+          }
           rows={1}
           disabled={isLoading}
-          className="flex-1   bg-transparent text-textPrimary text-sm placeholder-textSecondary
+          className="flex-1   bg-transparent dark:text-textPrimary text-sm placeholder-textSecondary
                      outline-none resize-none leading-relaxed max-h-28
                      disabled:opacity-50"
         />
@@ -103,8 +110,20 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
         </button>
       </form>
 
+      {/* Review mode hint */}
+      {activeMode === "review" && selectedCount === 0 && (
+        <p className="text-center text-xs text-yellow-400/70 mt-1.5">
+          ⚠️ Review mode: select one file from Sources panel first.
+        </p>
+      )}
+      {activeMode === "review" && selectedCount > 0 && (
+        <p className="text-center text-xs text-green-400/70 mt-1.5">
+          ✓ {selectedCount} file selected — ready for contract review.
+        </p>
+      )}
+
       {/* Disclaimer */}
-      <p className="text-center text-xs text-textSecondary/50 mt-2">
+      <p className="text-center text-xs text-textSecondary dark:text-textSecondary/50 mt-2">
         CLARA AI can be inaccurate. Please double check its responses.
       </p>
     </div>
