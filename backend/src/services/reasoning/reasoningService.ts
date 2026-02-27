@@ -41,10 +41,10 @@ export interface ReasoningResult {
 const SYSTEM_PROMPT = `Kamu adalah CLARA (Contract & Legal AI Reasoning Assistant), asisten hukum berbasis AI yang dirancang khusus untuk membantu UMKM Indonesia memahami kontrak dan peraturan ketenagakerjaan.
 
 PANDUAN UTAMA:
-1. Jawab HANYA berdasarkan konteks hukum yang diberikan. Jangan mengarang informasi.
-2. WAJIB rujuk ke pasal dan undang-undang yang relevan (format: "Pasal N UU No. X Tahun YYYY").
-3. Gunakan bahasa Indonesia yang jelas dan mudah dipahami oleh pelaku UMKM.
-4. Jika konteks tidak cukup untuk menjawab, katakan dengan jelas bahwa kamu memerlukan informasi lebih lanjut.
+1. PRIORITASKAN KONTEKS HUKUM (RAG) YANG DIBERIKAN: Selalu gunakan informasi, pasal, dan undang-undang dari bagian "KONTEKS HUKUM" terlebih dahulu.
+2. JADIKAN PENGETAHUAN INTERNAL SEBAGAI ALTERNATIF: JIKA DAN HANYA JIKA konteks yang diberikan kosong ATAU sama sekali tidak relevan dengan pertanyaan, barulah kamu boleh menggunakan pengetahuan hukum internalmu (Model Knowledge) untuk menjawab.
+3. WAJIB rujuk ke pasal dan undang-undang yang relevan (format: "Pasal N UU No. X Tahun YYYY").
+4. Gunakan bahasa Indonesia yang jelas dan mudah dipahami oleh pelaku UMKM.
 5. Berikan saran praktis, bukan hanya teori hukum.
 6. Tandai risiko hukum secara eksplisit dengan label [RISIKO TINGGI], [RISIKO SEDANG], atau [PERHATIAN].
 
@@ -256,12 +256,53 @@ export async function reason(
   const totalCitations = countCitations(bestPath);
   const conf = mapConfidenceLevel(entropy, totalCitations);
 
-  // Build citations from retrieval context (top 5)
-  const citations: Citation[] = context.slice(0, 5).map((r) => ({
-    id: r.id,
-    title: r.title,
-    source: r.source,
-  }));
+  // Filter the AI's answer against the RAG context to build a reliable citation list.
+  // We prioritize citations that genuinely came from Neo4j (RAG).
+  const citations: Citation[] = [];
+  const extracted = (bestPath.match(CITATION_PATTERN) ?? []);
+  const uniqueExtracted = Array.from(new Set(extracted.map((c) => c.trim().replace(/\n/g, " "))));
+
+  // 1. Try to match extracted citations to actual RAG context from Neo4j
+  for (const ext of uniqueExtracted) {
+    const extLower = ext.toLowerCase();
+    const matchedRagNode = context.find(
+      (r) =>
+        r.title.toLowerCase().includes(extLower) ||
+        r.content.toLowerCase().includes(extLower) ||
+        extLower.includes(r.title.toLowerCase())
+    );
+
+    if (matchedRagNode) {
+      if (!citations.some((c) => c.id === matchedRagNode.id)) {
+        citations.push({
+          id: matchedRagNode.id,
+          title: ext, // use the exact phrase the AI used
+          source: matchedRagNode.source,
+        });
+      }
+    } else {
+      // 2. If it couldn't be found in RAG, it's Model Knowledge.
+      // We still include it because sometimes the AI knows a related law 
+      // the RAG index missed, but we explicitly label it.
+      citations.push({
+        id: `ext-${Math.random().toString(36).substring(2, 9)}`,
+        title: ext,
+        source: "Model Knowledge",
+      });
+    }
+  }
+
+  // 3. Ensure we always include the top 2 RAG items if the AI used RAG broadly
+  // but failed to perfectly cite it.
+  if (context.length > 0 && citations.length === 0) {
+    context.slice(0, 2).forEach((r) => {
+      citations.push({
+        id: r.id,
+        title: r.title,
+        source: r.source,
+      });
+    });
+  }
 
   return {
     answer: bestPath,

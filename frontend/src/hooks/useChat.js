@@ -187,7 +187,33 @@ const useChat = () => {
     }
   };
 
-  return { messages, activeMode, setActiveMode, isLoading, sendChatMessage };
+  const queryOnly = async ({
+    message,
+    selectedSourceIds = [],
+    mode = null,
+  }) => {
+    try {
+      const { content } = await sendMessage({
+        message,
+        fileIds: selectedSourceIds,
+        mode,
+      });
+
+      return { content };
+    } catch (err) {
+      console.error("[queryOnly] Error:", err);
+      return null;
+    }
+  };
+
+  return {
+    messages,
+    activeMode,
+    setActiveMode,
+    isLoading,
+    sendChatMessage,
+    queryOnly,
+  };
 };
 
 export default useChat;
