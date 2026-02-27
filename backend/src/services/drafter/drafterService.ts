@@ -13,6 +13,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "../../config/env";
 import { getSession } from "../../config/neo4j";
+import { generateDraftPdf } from "./pdfService";
 
 const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY);
 
@@ -39,6 +40,7 @@ export interface DrafterResponse {
   binding_warning?: boolean;
   clarifying_questions?: string[];
   draft?: string;
+  pdf_base64?: string; // base64-encoded PDF, present when status === "draft_ready"
   document_number?: string;
   guardrail?: {
     is_safe: boolean;
@@ -116,7 +118,7 @@ Jawab HANYA dengan satu kata: MoU, LoI, atau PKS. Jika tidak jelas, pilih MoU.`;
   return "MoU";
 }
 
-// Step 2: Extract structured fields 
+// Step 2: Extract structured fields
 
 async function extractFields(
   message: string,
@@ -164,7 +166,7 @@ Kembalikan JSON. Gunakan null untuk field yang belum diketahui.`;
   }
 }
 
-// Step 3: Confidence - based completeness assessment  
+// Step 3: Confidence - based completeness assessment
 
 function assessCompleteness(
   fields: ExtractedFields,
@@ -177,8 +179,10 @@ function assessCompleteness(
   const missingCritical = criticalFields.filter((f) => !fields[f]);
   const presentOptional = optionalFields.filter((f) => !!fields[f]).length;
 
-  const criticalScore = (criticalFields.length - missingCritical.length) / criticalFields.length;
-  const optionalScore = optionalFields.length > 0 ? (presentOptional / optionalFields.length) * 0.2 : 0.2;
+  const criticalScore =
+    (criticalFields.length - missingCritical.length) / criticalFields.length;
+  const optionalScore =
+    optionalFields.length > 0 ? (presentOptional / optionalFields.length) * 0.2 : 0.2;
 
   return {
     score: Math.min(1, criticalScore * 0.8 + optionalScore),
@@ -186,7 +190,7 @@ function assessCompleteness(
   };
 }
 
-// Step 4: Generate a single proactive question   
+// Step 4: Generate a single proactive question
 
 async function generateProactiveQuestion(
   _fields: ExtractedFields,
@@ -231,7 +235,7 @@ JANGAN bertanya lebih dari satu hal sekaligus. Gunakan Bahasa Indonesia.`;
   }
 }
 
-// Step 4a: Persist DrafterSession in Neo4j 
+// Step 4a: Persist DrafterSession in Neo4j
 
 async function persistDrafterSession(
   sessionId: string,
@@ -264,7 +268,6 @@ async function persistDrafterSession(
 }
 
 // Step 5: Fetch clause templates from Neo4j
-
 
 interface ClauseTemplate {
   id: string;
@@ -438,7 +441,6 @@ function assembleDraft(
 
 // Main export
 
-
 export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterResponse> {
   const fullHistory = [...req.history, { role: "user" as const, content: req.message }];
   const userId = req.userId ?? "anonymous";
@@ -461,8 +463,15 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   const MIN_CONFIDENCE = env.DRAFTER_MIN_CONFIDENCE;
 
   if (score < MIN_CONFIDENCE) {
-    await persistDrafterSession(req.session_id, userId, fields, documentType).catch(() => { });
-    const question = await generateProactiveQuestion(fields, req.history, documentType, missingCritical);
+    await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
+      () => {},
+    );
+    const question = await generateProactiveQuestion(
+      fields,
+      req.history,
+      documentType,
+      missingCritical,
+    );
     return {
       status: "needs_clarification",
       document_type: documentType,
@@ -500,13 +509,24 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
     // Guardrail failure doesn't block draft delivery
   }
 
-  await persistDrafterSession(req.session_id, userId, fields, documentType).catch(() => { });
+  await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
+    () => {},
+  );
+
+  // Generate base64 PDF
+  let pdf_base64: string | undefined;
+  try {
+    pdf_base64 = await generateDraftPdf(draft, { documentType, documentNumber });
+  } catch (pdfErr) {
+    console.warn("[drafter] PDF generation failed (draft still returned):", pdfErr);
+  }
 
   return {
     status: "draft_ready",
     document_type: documentType,
     binding_warning,
     draft,
+    pdf_base64,
     document_number: documentNumber,
     guardrail: guardrailResult,
   };
