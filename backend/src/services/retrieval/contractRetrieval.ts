@@ -1,7 +1,8 @@
 /**
  * contractRetrieval.ts
  * Dense vector search over ContractClause nodes, filtered by document_id.
- * Used to retrieve clauses from a previously uploaded contract during chat.
+ * Falls back to a plain Cypher scan if the vector index returns no results
+ * (e.g., embeddings were skipped during upload).
  */
 import { getSession } from "../../config/neo4j";
 import { embedText } from "../embedding/embeddingService";
@@ -13,35 +14,77 @@ export async function contractRetrieval(
   documentId: string,
   topK = 5,
 ): Promise<RetrievalResult[]> {
-  const queryEmbedding = await embedText(queryText, TaskType.RETRIEVAL_QUERY);
   const session = await getSession();
 
   try {
-    // Use vector index with a WHERE filter on document_id
-    const result = await session.run(
+    // Strategy 1: Vector similarity search (preferred)
+    let vectorResults: RetrievalResult[] = [];
+    try {
+      const queryEmbedding = await embedText(queryText, TaskType.RETRIEVAL_QUERY);
+      const result = await session.run(
+        `
+        CALL db.index.vector.queryNodes('contract_clause_embedding_idx', $topK, $embedding)
+        YIELD node AS cc, score
+        WHERE cc.document_id = $documentId
+        RETURN
+          cc.id         AS id,
+          'ContractClause' AS label,
+          cc.header     AS title,
+          cc.content    AS content,
+          score,
+          'Uploaded Contract' AS source
+        ORDER BY score DESC
+        `,
+        { topK: topK * 3, embedding: queryEmbedding, documentId },
+        // fetch 3x then filter vector index doesn't pre-filter in all Neo4j versions
+      );
+
+      vectorResults = result.records.slice(0, topK).map((rec) => ({
+        id: rec.get("id") as string,
+        label: "ContractClause" as const,
+        title: rec.get("title") as string,
+        content: rec.get("content") as string,
+        score: rec.get("score") as number,
+        source: "Uploaded Contract",
+      }));
+    } catch {
+      // Vector index may not exist yet or embeddings are missing use fallback
+    }
+
+    if (vectorResults.length > 0) {
+      return vectorResults;
+    }
+
+    // Strategy 2: Plain scan fallback (when no embeddings are stored)
+    console.warn(
+      `[contractRetrieval] Vector search returned 0 results for document_id="${documentId}". Falling back to plain scan.`,
+    );
+    const fallback = await session.run(
       `
-      CALL db.index.vector.queryNodes('contract_clause_embedding_idx', $topK, $embedding)
-      YIELD node AS cc, score
-      WHERE cc.document_id = $documentId
+      MATCH (cc:ContractClause { document_id: $documentId })
       RETURN
-        cc.id         AS id,
-        'ContractClause' AS label,
-        cc.header     AS title,
-        cc.content    AS content,
-        score,
-        'Uploaded Contract' AS source
-      ORDER BY score DESC
+        cc.id      AS id,
+        cc.header  AS title,
+        cc.content AS content
+      ORDER BY cc.index ASC
+      LIMIT $topK
       `,
-      { topK: topK * 2, embedding: queryEmbedding, documentId },
-      // fetch 2x then filter; vector index doesn't support pre-filter in all versions
+      { documentId, topK },
     );
 
-    return result.records.slice(0, topK).map((rec) => ({
+    if (fallback.records.length === 0) {
+      console.warn(
+        `[contractRetrieval] No ContractClause nodes found for document_id="${documentId}". ` +
+        `Make sure the document was uploaded and stored successfully.`,
+      );
+    }
+
+    return fallback.records.map((rec) => ({
       id: rec.get("id") as string,
       label: "ContractClause" as const,
       title: rec.get("title") as string,
       content: rec.get("content") as string,
-      score: rec.get("score") as number,
+      score: 1.0, // flat score not ranked by similarity
       source: "Uploaded Contract",
     }));
   } finally {
