@@ -304,7 +304,7 @@ router.post(
         ]);
         // Always inject the contract text directly — don't rely solely on retrieval
         const reasoning = await reason(question, context, [
-          { role: "user", content: `Berikut isi kontrak yang harus kamu analisis:\n\n${contractText}` },
+          { role: "user", content: `Here is the contract content you must analyze:\n\n${contractText}` },
         ]);
 
         res.json(
@@ -320,7 +320,7 @@ router.post(
               pasal_references: c.pasal_references,
             })),
             extracted_variables,
-            language: "id",
+            language: "en",
           }),
         );
         return;
@@ -345,7 +345,7 @@ router.post(
         hybridRetrieval(resolvedQuestion),
       ]);
       const reasoning = await reason(resolvedQuestion, context, [
-        { role: "user", content: `Kontrak untuk dianalisis:\n${contractText}` },
+        { role: "user", content: `Contract to analyze:\n${contractText}` },
       ]);
 
       res.json(

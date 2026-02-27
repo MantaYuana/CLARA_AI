@@ -106,14 +106,14 @@ async function classifyIntent(
     .map((h) => `${h.role === "user" ? "Pengguna" : "CLARA"}: ${h.content}`)
     .join("\n");
 
-  const prompt = `Berdasarkan percakapan berikut, tentukan jenis dokumen yang ingin dibuat pengguna.
-Pilihan: MoU (Memorandum of Understanding / Nota Kesepahaman), LoI (Letter of Intent / Surat Pernyataan Niat), PKS (Perjanjian Kerja Sama / Kontrak Kerja Sama)
+  const prompt = `Based on the following conversation, determine the type of document the user wants to create.
+Options: MoU (Memorandum of Understanding), LoI (Letter of Intent), PKS (Cooperation Agreement)
 
-Percakapan terbaru:
+Recent conversation:
 ${historyText}
-Pesan terbaru: ${message}
+Latest message: ${message}
 
-Jawab HANYA dengan satu kata: MoU, LoI, atau PKS. Jika tidak jelas, pilih MoU.`;
+Answer EXACTLY with one word: MoU, LoI, or PKS. If unclear, choose MoU.`;
 
   const result = await model.generateContent(prompt);
   const raw = result.response.text().trim().toUpperCase();
@@ -134,26 +134,26 @@ async function extractFields(
     .map((h) => `${h.role === "user" ? "Pengguna" : "CLARA"}: ${h.content}`)
     .join("\n");
 
-  const prompt = `Ekstrak informasi berikut dari percakapan ini untuk membuat ${documentType}.
-Kembalikan HANYA objek JSON tanpa penjelasan tambahan.
+  const prompt = `Extract the following information from this conversation to create a ${documentType}.
+Return ONLY a JSON object without any additional explanation.
 
-Field yang dibutuhkan:
-- party_a_name: nama pihak pertama (perusahaan/individu)
-- party_a_details: detail pihak pertama (alamat lengkap, NIK/NIB, jabatan, atau perwakilan)
-- party_b_name: nama pihak kedua (perusahaan/mitra/individu)
-- party_b_details: detail pihak kedua (alamat lengkap, NIK/NIB, jabatan, atau perwakilan)
-- scope: ruang lingkup / kewajiban masing-masing pihak secara spesifik
-- duration: jangka waktu (contoh: "1 tahun", "12 bulan", "sampai selesai")
-- value: nilai/harga kesepakatan (jika ada)
-- payment_terms: mekanisme/cara pembayaran (termin, cicilan, lunas, dll)
-- penalty: ketentuan denda atau sanksi keterlambatan (jika ada)
-- jurisdiction: kota domisili pengadilan untuk penyelesaian sengketa
+Required fields:
+- party_a_name: name of the first party (company/individual)
+- party_a_details: details of the first party (full address, ID/NIB, title, or representative)
+- party_b_name: name of the second party (company/partner/individual)
+- party_b_details: details of the second party (full address, ID/NIB, title, or representative)
+- scope: scope of work / specific obligations of each party
+- duration: duration (e.g., "1 year", "12 months", "until completion")
+- value: agreement value/price (if any)
+- payment_terms: payment mechanism/method (installments, full payment, transfer, etc.)
+- penalty: penalty or late fee provisions (if any)
+- jurisdiction: domicile city of the court for dispute resolution
 
-Percakapan:
+Conversation:
 ${historyText}
-Pesan terbaru: ${message}
+Latest message: ${message}
 
-Kembalikan JSON. Gunakan null untuk field yang belum diketahui.`;
+Return JSON. Use null for unknown fields.`;
 
   const result = await model.generateContent(prompt);
   const raw = result.response
@@ -222,16 +222,16 @@ function detectEvasion(history: ConversationTurn[], missingCritical: string[]): 
   if (!missingCritical.length || history.length < 2) return false;
 
   const fieldLabels: Record<string, string[]> = {
-    party_a_name: ["pihak pertama", "nama", "perusahaan", "individu", "siapa"],
-    party_a_details: ["alamat", "jabatan", "nik", "detail pihak pertama", "identitas"],
-    party_b_name: ["pihak kedua", "nama", "mitra", "siapa"],
-    party_b_details: ["alamat", "jabatan", "nik", "detail pihak kedua", "identitas"],
-    scope: ["ruang lingkup", "tujuan", "kerja sama", "lingkup", "kewajiban", "tugas"],
-    duration: ["jangka waktu", "durasi", "berapa lama", "bulan", "tahun", "selesai"],
-    value: ["nilai", "harga", "berapa", "rp", "biaya"],
-    payment_terms: ["cara bayar", "termin", "cicil", "lunas", "transfer", "pembayaran"],
-    jurisdiction: ["kota", "pengadilan", "yurisdiksi", "sengketa", "domisili"],
-    penalty: ["denda", "penalti", "sanksi", "terlambat"],
+    party_a_name: ["first party", "name", "company", "individual", "who"],
+    party_a_details: ["address", "title", "id", "first party details", "identity"],
+    party_b_name: ["second party", "name", "partner", "who"],
+    party_b_details: ["address", "title", "id", "second party details", "identity"],
+    scope: ["scope", "purpose", "cooperation", "obligations", "tasks"],
+    duration: ["duration", "how long", "month", "year", "finish"],
+    value: ["value", "price", "how much", "cost"],
+    payment_terms: ["payment", "installments", "transfer", "pay"],
+    jurisdiction: ["city", "court", "jurisdiction", "dispute", "domicile"],
+    penalty: ["penalty", "fine", "sanction", "late"],
   };
 
   const topField = missingCritical[0];
@@ -276,49 +276,49 @@ async function generateProactiveQuestion(
     .join("\n");
 
   const fieldLabels: Record<string, string> = {
-    party_a_name: "nama subjek Pihak Pertama",
-    party_a_details: "alamat lengkap dan identitas (NIK/Jabatan) Pihak Pertama",
-    party_b_name: "nama subjek Pihak Kedua",
-    party_b_details: "alamat lengkap dan identitas (NIK/Jabatan) Pihak Kedua",
-    scope: "detail ruang lingkup kerja dan kewajiban masing-masing pihak",
-    duration: "jangka waktu berlakunya perjanjian",
-    value: "nilai kesepakatan atau harga (Rp)",
-    payment_terms: "mekanisme atau cara pembayaran",
-    jurisdiction: "kota domisili hukum penyelesaian sengketa",
-    penalty: "ketentuan denda atau sanksi keterlambatan",
+    party_a_name: "name of the First Party",
+    party_a_details: "full address and identity (ID/Title) of the First Party",
+    party_b_name: "name of the Second Party",
+    party_b_details: "full address and identity (ID/Title) of the Second Party",
+    scope: "detailed scope of work and obligations of each party",
+    duration: "validity period of the agreement",
+    value: "agreement value or price",
+    payment_terms: "payment mechanism or method",
+    jurisdiction: "legal domicile city for dispute resolution",
+    penalty: "provisions for fines or late penalties",
   };
 
   const topMissing = missingCritical[0];
   const fieldLabel = fieldLabels[topMissing] ?? topMissing;
 
   const evasionInstruction = isEvasion
-    ? `Pengguna tampaknya belum menjawab pertanyaan sebelumnya tentang "${fieldLabel}".
-Tanyakan kembali dengan sopan namun lebih spesifik. Berikan contoh informasi yang kamu harapkan.
-JANGAN beralih ke poin lain sebelum ini terjawab.`
-    : `Ajukan pertanyaan yang interaktif, natural, dan berempati layaknya konsultan hukum yang santai tapi profesional.
-Jangan seperti robot yang menginterogasi. Jika meminta detail identitas, kamu boleh bertanya sekaligus tentang nama dan alamat, atau memandu mereka menyebutkan hal yang biasa ada di kontrak. Boleh tanya 1-2 hal yang sangat berkaitan bersamaan asal ringkas. Beri sedikit pujian/respon positif atas informasi sebelumnya jika relevan.`;
+    ? `The user seems to have not answered the previous question about "${fieldLabel}".
+Ask again politely but be more specific. Provide an example of the expected information.
+DO NOT move on to another point before this is answered.`
+    : `Ask an interactive, natural, and empathetic question like a relaxed but professional legal consultant.
+Do not act like an interrogating robot. If asking for identity details, you can ask for both name and address together, or guide them to mention standard contract items. You may ask 1-2 highly related things together as long as it's concise. Give brief positive feedback/praise for previous information if relevant.`;
 
-  const prompt = `Kamu adalah CLARA, asisten hukum AI untuk UMKM Indonesia.
-Kamu sedang membantu pengguna menyusun Draf ${documentType}.
+  const prompt = `You are CLARA, an AI legal assistant for MSMEs.
+You are helping the user draft a ${documentType}.
 
-Percakapan sejauh ini:
+Conversation so far:
 ${conversationText}
 
-Informasi penting yang saat ini MASIH BELUM LENGKAP: ${missingCritical.map((f) => fieldLabels[f] ?? f).join(", ")}.
-Fokus utama yang ditanyakan sekarang adalah: ${fieldLabel}.
+Important information that is CURRENTLY INCOMPLETE: ${missingCritical.map((f) => fieldLabels[f] ?? f).join(", ")}.
+The main focus to ask right now is: ${fieldLabel}.
 
 ${evasionInstruction}
 
-Gunakan Bahasa Indonesia yang hangat, komunikatif, dan selipkan emoji sesekali agar tidak kaku. Jawablah seolah berdialog langsung.`;
+Use clear, warm, English language, and insert emojis occasionally so it doesn't feel stiff. Answer as if in a direct dialogue.`;
 
   try {
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
   } catch {
     if (isEvasion) {
-      return `Mohon maaf, sebelum saya lanjutkan, saya masih perlu mengetahui ${fieldLabel}. Bisa tolong dijawab?`;
+      return `I'm sorry, before I continue, I still need to know the ${fieldLabel}. Could you please answer?`;
     }
-    return `Bisa tolong sebutkan ${fieldLabel}?`;
+    return `Could you please tell me the ${fieldLabel}?`;
   }
 }
 
@@ -393,84 +393,84 @@ const DEFAULT_TEMPLATES: Record<DocumentType, ClauseTemplate[]> = {
   MoU: [
     {
       id: "default-1",
-      title: "PARA PIHAK",
+      title: "THE PARTIES",
       order: 1,
       template:
-        "Perjanjian ini dibuat antara **{{party_a_name}}** dan **{{party_b_name}}**.",
+        "This agreement is made between **{{party_a_name}}** and **{{party_b_name}}**.",
     },
     {
       id: "default-2",
-      title: "RUANG LINGKUP",
+      title: "SCOPE",
       order: 2,
-      template: "Ruang lingkup kerja sama: {{scope}}",
+      template: "Scope of cooperation: {{scope}}",
     },
     {
       id: "default-3",
-      title: "JANGKA WAKTU",
+      title: "DURATION",
       order: 3,
-      template: "Perjanjian ini berlaku selama {{duration}} sejak penandatanganan.",
+      template: "This agreement is valid for {{duration}} from the date of signing.",
     },
     {
       id: "default-4",
-      title: "KERAHASIAAN",
+      title: "CONFIDENTIALITY",
       order: 4,
       template:
-        "Para Pihak wajib menjaga kerahasiaan informasi yang diperoleh selama kerja sama.",
+        "The Parties shall keep confidential any information obtained during the cooperation.",
     },
     {
       id: "default-5",
-      title: "PENYELESAIAN SENGKETA",
+      title: "DISPUTE RESOLUTION",
       order: 5,
       template:
-        "Sengketa diselesaikan melalui musyawarah, dan jika gagal, melalui Pengadilan Negeri {{jurisdiction}}.",
+        "Disputes shall be resolved through amicable settlement, and if it fails, through the {{jurisdiction}} District Court.",
     },
   ],
   LoI: [
     {
       id: "default-1",
-      title: "PERNYATAAN NIAT",
+      title: "STATEMENT OF INTENT",
       order: 1,
       template:
-        "**{{party_a_name}}** menyatakan niat untuk bekerja sama dengan **{{party_b_name}}** dalam bidang {{scope}}.",
+        "**{{party_a_name}}** expresses the intent to cooperate with **{{party_b_name}}** in the field of {{scope}}.",
     },
     {
       id: "default-2",
-      title: "JANGKA WAKTU NEGOSIASI",
+      title: "NEGOTIATION PERIOD",
       order: 2,
-      template: "Negosiasi lebih lanjut akan dilakukan dalam waktu {{duration}}.",
+      template: "Further negotiations will be conducted within a period of {{duration}}.",
     },
   ],
   PKS: [
     {
       id: "default-1",
-      title: "PARA PIHAK",
+      title: "THE PARTIES",
       order: 1,
       template:
-        "PKS ini dibuat antara **{{party_a_name}}** (Pihak Pertama) dan **{{party_b_name}}** (Pihak Kedua).",
+        "This Cooperation Agreement is made between **{{party_a_name}}** (First Party) and **{{party_b_name}}** (Second Party).",
     },
     {
       id: "default-2",
-      title: "RUANG LINGKUP",
+      title: "SCOPE",
       order: 2,
-      template: "Ruang lingkup kerja sama: {{scope}}",
+      template: "Scope of cooperation: {{scope}}",
     },
     {
       id: "default-3",
-      title: "JANGKA WAKTU",
+      title: "DURATION",
       order: 3,
-      template: "PKS ini berlaku selama {{duration}}.",
+      template: "This Cooperation Agreement is valid for {{duration}}.",
     },
     {
       id: "default-4",
-      title: "PEMBAYARAN",
+      title: "PAYMENT",
       order: 4,
-      template: "Nilai kerja sama: {{value}}. Ketentuan denda: {{penalty}}.",
+      template: "Cooperation value: {{value}}. Penalty provisions: {{penalty}}.",
     },
     {
       id: "default-5",
-      title: "PENYELESAIAN SENGKETA",
+      title: "DISPUTE RESOLUTION",
       order: 5,
-      template: "Sengketa diselesaikan melalui Pengadilan Negeri {{jurisdiction}}.",
+      template: "Disputes shall be resolved through the {{jurisdiction}} District Court.",
     },
   ],
 };
@@ -486,7 +486,7 @@ function fillTemplate(template: string, fields: ExtractedFields): string {
     );
   }
   // Replace any remaining unfilled placeholders
-  filled = filled.replace(/{{[^}]+}}/g, "[BELUM DIISI]");
+  filled = filled.replace(/{{[^}]+}}/g, "[NOT FILLED YET]");
   return filled;
 }
 
@@ -497,21 +497,21 @@ function assembleDraft(
   documentNumber: string,
 ): string {
   const now = new Date();
-  const dateStr = now.toLocaleDateString("id-ID", {
+  const dateStr = now.toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 
   const typeLabels: Record<DocumentType, string> = {
-    MoU: "NOTA KESEPAHAMAN (MEMORANDUM OF UNDERSTANDING)",
-    LoI: "SURAT PERNYATAAN NIAT (LETTER OF INTENT)",
-    PKS: "PERJANJIAN KERJA SAMA",
+    MoU: "MEMORANDUM OF UNDERSTANDING",
+    LoI: "LETTER OF INTENT",
+    PKS: "COOPERATION AGREEMENT",
   };
 
   let doc = `# ${typeLabels[documentType]}\n`;
-  doc += `**Nomor: ${documentNumber}**\n\n`;
-  doc += `*Dibuat di Jakarta, pada tanggal ${dateStr}*\n\n---\n\n`;
+  doc += `**Number: ${documentNumber}**\n\n`;
+  doc += `*Executed in Jakarta, on ${dateStr}*\n\n---\n\n`;
 
   for (const tmpl of templates) {
     doc += `## ${tmpl.title}\n\n`;
@@ -519,9 +519,9 @@ function assembleDraft(
     doc += "\n\n";
   }
 
-  doc += `---\n\n*Demikian ${typeLabels[documentType]} ini dibuat dalam keadaan sadar dan tanpa paksaan dari pihak manapun.*\n\n`;
-  doc += `**PIHAK PERTAMA**\n\n\n\n___________________\n${fields.party_a_name ?? "[Nama Pihak Pertama]"}\n\n`;
-  doc += `**PIHAK KEDUA**\n\n\n\n___________________\n${fields.party_b_name ?? "[Nama Pihak Kedua]"}\n`;
+  doc += `---\n\n*IN WITNESS WHEREOF, this ${typeLabels[documentType]} is executed consciously and without coercion from any party.*\n\n`;
+  doc += `**FIRST PARTY**\n\n\n\n___________________\n${fields.party_a_name ?? "[Name of First Party]"}\n\n`;
+  doc += `**SECOND PARTY**\n\n\n\n___________________\n${fields.party_b_name ?? "[Name of Second Party]"}\n`;
 
   return doc;
 }
