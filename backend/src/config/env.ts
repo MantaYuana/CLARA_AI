@@ -43,4 +43,16 @@ export const env = {
   // File upload
   MAX_FILE_SIZE_MB: parseInt(process.env.MAX_FILE_SIZE_MB ?? "10", 10),
   UPLOAD_DIR: process.env.UPLOAD_DIR ?? "./uploads",
+
+  // OAuth + JWT (Module 2)
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? process.env.OAUTH_GOOGLE_CLIENT_ID ?? "",
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? process.env.OAUTH_GOOGLE_CLIENT_SECRET ?? "",
+  JWT_SECRET: process.env.JWT_SECRET ?? "change_me_in_production",
+  FRONTEND_URL: process.env.FRONTEND_URL ?? "http://localhost:5173",
+
+  // Queue (Module 4)
+  REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
+
+  // Drafter (Module 5)
+  DRAFTER_MIN_CONFIDENCE: parseFloat(process.env.DRAFTER_MIN_CONFIDENCE ?? "0.8"),
 };
