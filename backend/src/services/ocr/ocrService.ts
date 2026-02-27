@@ -11,7 +11,7 @@ import { env } from "../../config/env";
 
 const genAI = new GoogleGenerativeAI(env.GOOGLE_AI_API_KEY);
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// Types
 
 export interface Clause {
   index: number;
@@ -43,7 +43,7 @@ export interface NumericVariables {
   pkwt_duration_years?: number;          // durasi PKWT dalam tahun
 }
 
-// ── Indonesian OCR Correction Map ────────────────────────────────────────────
+// Indonesian OCR Correction Map 
 
 /**
  * Apply common Indonesian-language OCR corrections.
@@ -58,7 +58,7 @@ export interface NumericVariables {
 export function applyOcrCorrections(text: string): string {
   let t = text;
 
-  // ── Legal term prefix fixes (must come first) ──────────────────────────────
+  // Legal term prefix fixes (must come first) 
   // Pasal corruption: Pa5al, Pa$al, Pas@l, PasaI (capital-I for l)
   t = t.replace(/Pa[s5$][a@]l\b/gi, "Pasal");
   t = t.replace(/\bPasaI\b/g, "Pasal"); // capital-I suffix
@@ -69,7 +69,7 @@ export function applyOcrCorrections(text: string): string {
   // BAB corruption
   t = t.replace(/\bB[A4][B8]\b/gi, "BAB");
 
-  // ── Character-level confusions ─────────────────────────────────────────────
+  // Character-level confusions
   // "rn" → "m" in Indonesian words (common sans-serif OCR error)
   // Only inside word boundaries so we don't break "international", "internet" etc.
   t = t.replace(/\b(\w*)rn(\w*)\b/g, (_m, pre, suf) => {
@@ -105,14 +105,14 @@ export function applyOcrCorrections(text: string): string {
   t = t.replace(/\bpasa1\b/gi, "pasal");
   t = t.replace(/\bpasa1\s+(\d)/gi, "pasal $1");
 
-  // ── Spacing normalisation ─────────────────────────────────────────────────
+  // Spacing normalisation
   // Multiple spaces → single space
   t = t.replace(/[ \t]{2,}/g, " ");
 
   // Stray newlines in middle of sentences (single \n surrounded by lowercase)
   t = t.replace(/([a-z,;])\n([a-z])/g, "$1 $2");
 
-  // ── Common Indonesian legal vocab normalisation ───────────────────────────
+  // Common Indonesian legal vocab normalisation
   t = t.replace(/\bsebagaimana\b/gi, "sebagaimana");
   t = t.replace(/\bperjanjian\b/gi, "perjanjian");
   t = t.replace(/\bwanprestasi\b/gi, "wanprestasi");
@@ -125,7 +125,7 @@ export function applyOcrCorrections(text: string): string {
   return t.trim();
 }
 
-// ── Numeric Variable Extraction ───────────────────────────────────────────────
+// Numeric Variable Extraction
 
 /**
  * Extract all numeric contract variables from raw text.
@@ -203,7 +203,7 @@ export function extractNumericVariables(text: string): NumericVariables {
   return result;
 }
 
-// ── Image OCR ─────────────────────────────────────────────────────────────────
+// Image OCR
 
 export async function extractTextFromImage(
   buffer: Buffer,
@@ -226,7 +226,7 @@ export async function extractTextFromImage(
   return text;
 }
 
-// ── PDF OCR ───────────────────────────────────────────────────────────────────
+// PDF OCR
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
@@ -246,7 +246,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   return text;
 }
 
-// ── Clause Segmentation ───────────────────────────────────────────────────────
+// Clause Segmentation
 
 /**
  * Split raw OCR text into structured contract clauses.
@@ -299,7 +299,7 @@ export function segmentClauses(rawText: string): Clause[] {
   });
 }
 
-// ── Combined pipeline ─────────────────────────────────────────────────────────
+// Combined pipeline
 
 export async function processUploadedFile(
   buffer: Buffer,
