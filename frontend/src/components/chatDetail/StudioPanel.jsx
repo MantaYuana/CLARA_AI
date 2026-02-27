@@ -17,7 +17,7 @@ const MODES = [
   },
   {
     id: "draft",
-    label: "Create Contract",
+    label: "Create Draft Contract",
     description:
       "Generate professional legal contracts with AI-guided templates.",
     icon: <HiOutlinePencilSquare className="text-lg" />,
