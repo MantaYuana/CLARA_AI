@@ -81,3 +81,26 @@ export const createProject = async (payload) => {
   };
   return newProject;
 };
+
+/**
+ * Rename an existing project.
+ * @param {string} id
+ * @param {string} newTitle
+ * @returns {Promise<void>}
+ */
+export const renameProject = async (id, newTitle) => {
+  // TODO: uncomment when backend is ready
+  // await axiosInstance.patch(`/api/v1/projects/${id}`, { title: newTitle });
+  await new Promise((r) => setTimeout(r, 150));
+};
+
+/**
+ * Delete a project.
+ * @param {string} id
+ * @returns {Promise<void>}
+ */
+export const deleteProject = async (id) => {
+  // TODO: uncomment when backend is ready
+  // await axiosInstance.delete(`/api/v1/projects/${id}`);
+  await new Promise((r) => setTimeout(r, 150));
+};

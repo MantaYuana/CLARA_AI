@@ -5,6 +5,7 @@ import Navbar from "../components/layout/Navbar";
 import SearchBar from "../components/ui/SearchBar";
 import ProjectCard from "../components/ui/ProjectCard";
 import useProjects from "../hooks/useProjects";
+
 // ─── Skeleton loader for project cards ───────────────────────────────────────
 const ProjectCardSkeleton = () => (
   <div className="flex flex-col gap-3 p-5 rounded-xl bg-surface border border-border animate-pulse">
@@ -59,6 +60,8 @@ const Home = () => {
     isLoading,
     isCreating,
     handleCreate,
+    handleRename,
+    handleDelete,
   } = useProjects();
   const onCreateNew = async () => {
     try {
@@ -72,15 +75,15 @@ const Home = () => {
     <div className="min-h-screen bg-backgroundBlack font-poppins">
       <Navbar />
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col items-center text-center pt-16 pb-10 px-4 animate-fadeIn">
-        <h1 className="text-3xl md:text-4xl font-bold text-textPrimary leading-tight">
+      <div className="flex flex-col items-center text-center pt-24 pb-10 px-6 animate-fadeIn ">
+        <h1 className="text-3xl md:text-4xl font-semibold text-textPrimary leading-tight">
           Welcome to{" "}
           <span className="bg-linear-to-b from-secondary to-primary bg-clip-text text-transparent">
             Clara.
           </span>
         </h1>
         <p className="mt-3 text-textSecondary text-sm md:text-base">
-          Analyze and create legal contracts with AI
+          Discuss, Analyze, and create legal contracts with AI
         </p>
       </div>
       {/* ── Search + Create ───────────────────────────────────────────────── */}
@@ -115,7 +118,12 @@ const Home = () => {
             <EmptyState searchQuery={searchQuery} onCreate={onCreateNew} />
           ) : (
             projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onRename={handleRename}
+                onDelete={handleDelete}
+              />
             ))
           )}
         </div>

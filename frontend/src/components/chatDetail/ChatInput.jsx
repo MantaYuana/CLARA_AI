@@ -1,0 +1,114 @@
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { HiPaperAirplane, HiOutlineDocumentText } from "react-icons/hi2";
+
+const schema = yup.object({
+  message: yup
+    .string()
+    .trim()
+    .min(1, "Pesan tidak boleh kosong")
+    .max(2000, "Pesan terlalu panjang")
+    .required(),
+});
+
+/**
+ * ChatInput — fixed-bottom input inside the chat panel.
+ *
+ * Props:
+ *  @param {Function} onSend        — (message: string) => void
+ *  @param {boolean}  isLoading     — disables input while AI is responding
+ *  @param {number}   selectedCount — number of selected sources to display
+ */
+const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm({ resolver: yupResolver(schema) });
+
+  const textareaRef = useRef(null);
+  const value = watch("message", "");
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }
+  }, [value]);
+
+  const onSubmit = ({ message }) => {
+    onSend(message.trim());
+    reset();
+  };
+
+  // Submit on Enter (Shift+Enter for new line)
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(onSubmit)();
+    }
+  };
+
+  const canSend = value.trim().length > 0 && !isLoading;
+
+  return (
+    <div className="shrink-0 border-t border-border bg-backgroundBlack px-4 py-3">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex items-end gap-3 bg-surface border border-border rounded-2xl px-4 py-3
+                   focus-within:border-primary/50 transition-colors duration-200"
+      >
+        {/* Textarea */}
+        <textarea
+          {...register("message")}
+          ref={(el) => {
+            register("message").ref(el);
+            textareaRef.current = el;
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Start typing..."
+          rows={1}
+          disabled={isLoading}
+          className="flex-1 bg-transparent text-textPrimary text-sm placeholder-textSecondary
+                     outline-none resize-none leading-relaxed max-h-28
+                     disabled:opacity-50"
+        />
+
+        {/* Sources count badge */}
+        {selectedCount > 0 && (
+          <div className="flex items-center gap-1 text-xs text-textSecondary shrink-0">
+            <HiOutlineDocumentText className="text-primary text-base" />
+            <span className="text-primary font-medium">
+              {selectedCount} source{selectedCount > 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
+
+        {/* Send button */}
+        <button
+          type="submit"
+          disabled={!canSend}
+          className="p-2 rounded-xl bg-primary text-white
+                     hover:bg-primary/80 active:scale-95
+                     disabled:opacity-30 disabled:cursor-not-allowed
+                     transition-all duration-150 shrink-0"
+        >
+          <HiPaperAirplane className="text-base" />
+        </button>
+      </form>
+
+      {/* Disclaimer */}
+      <p className="text-center text-xs text-textSecondary/50 mt-2">
+        CLARA AI can be inaccurate. Please double check its responses.
+      </p>
+    </div>
+  );
+};
+
+export default ChatInput;
