@@ -28,10 +28,10 @@ const ChatPanel = ({
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 border-primary dark:bg-background border dark:border-border rounded-2xl overflow-hidden h-full">
+    <div className="flex-1 flex flex-col min-w-0 border bg-white dark:bg-background border-gray-200 dark:border-border rounded-2xl overflow-hidden h-full">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="px-5 py-3.5 border-b border-primary dark:border-border shrink-0">
-        <span className="dark:text-textPrimary text-sm font-semibold">
+      <div className="px-5 py-3.5 border-b border-gray-200 dark:border-border shrink-0">
+        <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
           Chat
         </span>
       </div>

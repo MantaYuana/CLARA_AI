@@ -16,10 +16,10 @@ const ACCEPTED_TYPES = [
 const fileArraySchema = yup.array().of(
   yup
     .mixed()
-    .test("fileSize", `Ukuran file maksimal ${MAX_SIZE_MB}MB`, (f) =>
+    .test("fileSize", `File size must not exceed ${MAX_SIZE_MB}MB`, (f) =>
       f ? f.size <= MAX_SIZE_MB * 1024 * 1024 : true,
     )
-    .test("fileType", "Format tidak didukung. Gunakan PDF atau DOCX", (f) =>
+    .test("fileType", "Unsupported format. Please use PDF or DOCX", (f) =>
       f ? ACCEPTED_TYPES.includes(f.type) : true,
     ),
 );
@@ -78,7 +78,11 @@ const useSources = () => {
               : s,
           ),
         );
-        toast.success(`"${item.name}" berhasil dianalisa`);
+        localStorage.setItem("lastDocumentId", documentId);
+        console.log(
+          `[useSources] "${item.name}" analyzed successfully, documentId: ${documentId}`,
+        );
+        toast.success(`"${item.name}" analyzed successfully`);
       } catch (err) {
         console.error(
           "[useSources] Analyze error:",
@@ -87,28 +91,22 @@ const useSources = () => {
         setSources((prev) =>
           prev.map((s) => (s.id === item.id ? { ...s, status: "error" } : s)),
         );
-        toast.error(`Gagal menganalisa "${item.name}"`);
+        toast.error(`Failed to analyze "${item.name}"`);
       }
     }
   };
 
   const toggleSelect = (id) => {
     setSources((prev) => {
-      const target = prev.find((s) => s.id === id);
-      if (!target) return prev;
+      const clicked = prev.find((s) => s.id === id);
+      const isAlreadySelected = clicked?.selected;
 
-      // Prevent selecting more than MAX_SELECTED simultaneously
-      if (!target.selected) {
-        const currentSelected = prev.filter((s) => s.selected).length;
-        if (currentSelected >= MAX_SELECTED) {
-          toast.error(`Maksimal ${MAX_SELECTED} file dapat dipilih sekaligus.`);
-          return prev;
+      return prev.map((s) => {
+        if (s.id === id && s.status === "ready") {
+          return { ...s, selected: !isAlreadySelected };
         }
-      }
-
-      return prev.map((s) =>
-        s.id === id ? { ...s, selected: !s.selected } : s,
-      );
+        return { ...s, selected: false };
+      });
     });
   };
 

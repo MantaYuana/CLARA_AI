@@ -74,7 +74,7 @@ export const createProject = async (payload) => {
   // return response.data;
   const newProject = {
     id: String(Date.now()),
-    title: payload.title || "Proyek Baru",
+    title: payload.title || "New Project",
     description: payload.description || "",
     sourcesCount: 0,
     updatedAt: new Date().toISOString(),

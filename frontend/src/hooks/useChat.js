@@ -90,12 +90,12 @@ const useChat = () => {
     if (mode === "review") {
       if (!selectedFile) {
         toast.error(
-          "Review mode: pilih satu file terlebih dahulu dari panel Sources.",
+          "Review mode: please select one file from the Sources panel first.",
         );
         return;
       }
       if (!message?.trim()) {
-        toast.error("Review mode: tuliskan pertanyaan review terlebih dahulu.");
+        toast.error("Review mode: please type your review question first.");
         return;
       }
     }
@@ -103,39 +103,39 @@ const useChat = () => {
     // ── Validation: Draft mode requires message ────────────────────────────
     if (mode === "draft") {
       if (!message?.trim()) {
-        toast.error("Draft mode: tuliskan deskripsi kontrak terlebih dahulu.");
+        toast.error(
+          "Draft mode: please describe the contract you want to create.",
+        );
         return;
       }
       if (!draftSessionId) {
-        toast.error("Draft mode: session_id tidak ditemukan. Coba lagi.");
+        toast.error("Draft mode: session ID not found. Please try again.");
         return;
       }
     }
 
     // Optimistically add user message
-    addMessage("user", message.trim());
+    addMessage("user", message.trim(), {
+      attachment:
+        mode === "review" && selectedFile
+          ? { name: selectedFile.name, size: selectedFile.size }
+          : null,
+    });
     setIsLoading(true);
 
     try {
       if (mode === "review") {
         // ── Review Contract mode ───────────────────────────────────────────
-        const {
-          content,
-          confidenceScore,
-          citations,
-          label,
-          clauses,
-          rationale,
-        } = await reviewContract({
-          file: selectedFile,
-          question: message.trim(),
-        });
+        const { content, confidenceScore, citations, label, rationale } =
+          await reviewContract({
+            file: selectedFile,
+            question: message.trim(),
+          });
 
         addMessage("assistant", content, {
           confidenceScore: confidenceScore ?? null,
           citations: citations ?? [],
           label: label ?? null,
-          clauses: clauses ?? [],
           rationale: rationale ?? null,
         });
       } else if (mode === "draft") {
@@ -145,9 +145,11 @@ const useChat = () => {
           content,
           status,
           documentType,
+          documentNumber,
           bindingWarning,
           clarifyingQuestions,
           draft,
+          pdfBase64,
         } = await drafterChat({
           session_id: draftSessionId,
           message: message.trim(),
@@ -157,9 +159,11 @@ const useChat = () => {
         addMessage("assistant", content, {
           status: status ?? null,
           documentType: documentType ?? null,
+          documentNumber: documentNumber ?? null,
           bindingWarning: bindingWarning ?? false,
           clarifyingQuestions: clarifyingQuestions ?? [],
           draft: draft ?? null,
+          pdfBase64: pdfBase64 ?? null,
         });
       } else {
         // ── Query mode (default) ───────────────────────────────────────────
@@ -178,10 +182,10 @@ const useChat = () => {
       console.error("[useChat] Error:", err?.response?.data ?? err.message);
       const errMsg =
         err?.response?.status === 401
-          ? "Sesi tidak valid. Silakan login kembali."
+          ? "Session expired. Please log in again."
           : err?.response?.status === 400
-            ? "Permintaan tidak valid. Pastikan file dan pertanyaan sudah benar."
-            : "Maaf, terjadi kesalahan saat menghubungi server. Silakan coba lagi.";
+            ? "Invalid request. Please ensure the file and question are correct."
+            : "Something went wrong while contacting the server. Please try again.";
 
       addMessage("assistant", errMsg);
     } finally {
@@ -189,7 +193,33 @@ const useChat = () => {
     }
   };
 
-  return { messages, activeMode, setActiveMode, isLoading, sendChatMessage };
+  const queryOnly = async ({
+    message,
+    selectedSourceIds = [],
+    mode = null,
+  }) => {
+    try {
+      const { content } = await sendMessage({
+        message,
+        fileIds: selectedSourceIds,
+        mode,
+      });
+
+      return { content };
+    } catch (err) {
+      console.error("[queryOnly] Error:", err);
+      return null;
+    }
+  };
+
+  return {
+    messages,
+    activeMode,
+    setActiveMode,
+    isLoading,
+    sendChatMessage,
+    queryOnly,
+  };
 };
 
 export default useChat;

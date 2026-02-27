@@ -23,8 +23,9 @@ export const useAuth = () => {
 
       setUser(res.data.data);
     } catch (error) {
-      setUser(null);
-      localStorage.removeItem("token");
+      console.error("Failed to fetch user:", error);
+      // setUser(null);
+      // localStorage.removeItem("token");
     } finally {
       setLoading(false);
     }

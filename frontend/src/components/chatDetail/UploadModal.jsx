@@ -20,7 +20,11 @@ const formatBytes = (bytes) => {
 const fileSchema = yup.object({
   files: yup
     .mixed()
-    .test("required", "Pilih setidaknya satu file", (v) => v && v.length > 0),
+    .test(
+      "required",
+      "Please select at least one file",
+      (v) => v && v.length > 0,
+    ),
 });
 
 /**
@@ -94,7 +98,7 @@ const UploadModal = ({ isOpen, onClose, onUpload }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <h2 className="text-textPrimary font-semibold text-base">
-            Upload Kontrak
+            Upload Contract
           </h2>
           <button
             onClick={onClose}
@@ -129,18 +133,16 @@ const UploadModal = ({ isOpen, onClose, onUpload }) => {
             </div>
             <div className="text-center">
               <p className="text-textPrimary text-sm font-medium">
-                {isDragging
-                  ? "Lepaskan file di sini"
-                  : "Drag & drop file di sini"}
+                {isDragging ? "Drop files here" : "Drag & drop files here"}
               </p>
               <p className="text-textSecondary text-xs mt-1">
-                atau{" "}
+                or{" "}
                 <span className="text-primary font-medium">
-                  klik untuk memilih file
+                  click to select files
                 </span>
               </p>
               <p className="text-textSecondary/60 text-xs mt-2">
-                PDF, DOCX — 10MB/file, upload tidak terbatas
+                PDF, DOCX — 10MB/file, unlimited uploads
               </p>
             </div>
 
@@ -198,7 +200,7 @@ const UploadModal = ({ isOpen, onClose, onUpload }) => {
               className="flex-1 py-2.5 rounded-xl border border-border text-textSecondary text-sm
                          hover:text-textPrimary hover:bg-surface transition-colors duration-150"
             >
-              Batal
+              Cancel
             </button>
             <button
               type="submit"
