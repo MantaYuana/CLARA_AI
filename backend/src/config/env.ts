@@ -15,12 +15,32 @@ export const env = {
   PORT: parseInt(process.env.PORT ?? "3001", 10),
   NODE_ENV: process.env.NODE_ENV ?? "development",
 
+  // Neo4j
   NEO4J_URI: requireEnv("NEO4J_URI"),
   NEO4J_USER: requireEnv("NEO4J_USER"),
   NEO4J_PASSWORD: requireEnv("NEO4J_PASSWORD"),
 
+  // Google AI / Gemini
   GOOGLE_AI_API_KEY: requireEnv("GOOGLE_AI_API_KEY"),
   GEMINI_MODEL: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
   EMBEDDING_MODEL: process.env.EMBEDDING_MODEL ?? "gemini-embedding-001",
   EMBEDDING_DIMENSION: parseInt(process.env.EMBEDDING_DIMENSION ?? "768", 10),
-} as const;
+
+  // Reasoning pipeline
+  REASONING_PATHS: parseInt(process.env.REASONING_PATHS ?? "3", 10),
+  TEMPERATURE_LOW: parseFloat(process.env.TEMPERATURE_LOW ?? "0.1"),
+  TEMPERATURE_HIGH: parseFloat(process.env.TEMPERATURE_HIGH ?? "0.7"),
+  MAX_CONTEXT_TOKENS: parseInt(process.env.MAX_CONTEXT_TOKENS ?? "8192", 10),
+
+  // Hybrid retrieval weights
+  TOP_K_DENSE: parseInt(process.env.TOP_K_DENSE ?? "5", 10),
+  TOP_K_BM25: parseInt(process.env.TOP_K_BM25 ?? "5", 10),
+  TOP_K_SYMBOLIC: parseInt(process.env.TOP_K_SYMBOLIC ?? "5", 10),
+  HYBRID_DENSE_WEIGHT: parseFloat(process.env.HYBRID_DENSE_WEIGHT ?? "0.5"),
+  HYBRID_BM25_WEIGHT: parseFloat(process.env.HYBRID_BM25_WEIGHT ?? "0.3"),
+  HYBRID_SYMBOLIC_WEIGHT: parseFloat(process.env.HYBRID_SYMBOLIC_WEIGHT ?? "0.2"),
+
+  // File upload
+  MAX_FILE_SIZE_MB: parseInt(process.env.MAX_FILE_SIZE_MB ?? "10", 10),
+  UPLOAD_DIR: process.env.UPLOAD_DIR ?? "./uploads",
+};
