@@ -280,21 +280,19 @@ export function buildPdf(pdfLines: PdfLine[]): Buffer {
         const approxWidth = textEsc.length * fontSize * 0.55;
         const x = Math.max(MARGIN_L, (PAGE_W - approxWidth) / 2);
         ops.push(`${fontRef} ${fontSize} Tf`);
-        ops.push(`${x} ${y} Td`);
+        ops.push(`1 0 0 1 ${x} ${y} Tm`); // absolute position
         ops.push(`(${textEsc}) Tj`);
-        ops.push(`${-x} 0 Td`); // reset x (next line will use absolute)
       } else {
         ops.push(`${fontRef} ${fontSize} Tf`);
-        ops.push(`${MARGIN_L} ${y} Td`);
+        ops.push(`1 0 0 1 ${MARGIN_L} ${y} Tm`); // absolute position
         ops.push(`(${textEsc}) Tj`);
-        ops.push(`${-MARGIN_L} 0 Td`);
       }
       y -= lh;
     }
 
     // Page number footer
     ops.push(`/F1 9 Tf`);
-    ops.push(`${PAGE_W / 2 - 20} ${MARGIN_B - 15} Td`);
+    ops.push(`1 0 0 1 ${PAGE_W / 2 - 20} ${MARGIN_B - 15} Tm`); // absolute position
     ops.push(`(Halaman ${pi + 1} dari ${pages.length}) Tj`);
     ops.push("ET");
 
