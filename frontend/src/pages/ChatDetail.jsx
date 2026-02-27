@@ -135,6 +135,7 @@ const ChatDetail = () => {
             onProcessFiles={processFiles}
             onToggleSelect={toggleSelect}
             onRemoveSource={removeSource}
+            activeMode={activeMode}
             fullWidth={false}
           />
         </div>

@@ -246,7 +246,9 @@ const ClarifyingQuestionsList = ({ questions }) => {
             <div className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 shrink-0 mt-0.5">
               <HiOutlineQuestionMarkCircle className="text-yellow-400 text-xs" />
             </div>
-            <p className="text-textPrimary text-sm leading-snug">{q}</p>
+            <p className="text-textPrimary text-sm leading-snug">
+              {stripMarkdown(q)}
+            </p>
           </div>
         ))}
       </div>
@@ -473,12 +475,18 @@ const ChatBubble = ({ message, user }) => {
             bindingWarning={message.bindingWarning}
           />
 
-          {/* Markdown content */}
+          {/* Markdown content — strip markdown for draft mode, render markdown for others */}
           {message.content && (
             <div className="text-sm leading-relaxed">
-              <ReactMarkdown components={mdComponents}>
-                {message.content}
-              </ReactMarkdown>
+              {message.status ? (
+                <p className="leading-relaxed whitespace-pre-wrap">
+                  {stripMarkdown(message.content)}
+                </p>
+              ) : (
+                <ReactMarkdown components={mdComponents}>
+                  {message.content}
+                </ReactMarkdown>
+              )}
             </div>
           )}
 
