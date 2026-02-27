@@ -94,10 +94,14 @@ const ProjectCard = ({ project, onRename, onDelete }) => {
   return (
     <div
       onClick={() => !isRenaming && navigate(`/chat/${id}`)}
-      className="group relative flex flex-col gap-3 p-5 rounded-xl bg-surface border border-border
-                 cursor-pointer transition-all duration-200
-                 hover:border-primary/40 hover:bg-surfaceLight hover:shadow-lg hover:shadow-primary/5
-                 animate-fadeIn"
+      className="group relative flex flex-col gap-3 p-5 rounded-xl 
+      bg-white dark:bg-surface 
+      border border-gray-400 dark:border-border
+      cursor-pointer transition-all duration-200
+      hover:border-primary/40 
+      hover:bg-gray-100 dark:hover:bg-surfaceLight 
+      hover:shadow-lg hover:shadow-primary/5
+      animate-fadeIn"
     >
       {/* Document icon */}
       <div
@@ -123,13 +127,13 @@ const ProjectCard = ({ project, onRename, onDelete }) => {
           />
         ) : (
           <h3
-            className="text-textPrimary font-semibold text-sm leading-snug
-                           group-hover:text-white transition-colors duration-200 line-clamp-2"
+            className="dark:text-textPrimary font-semibold text-sm leading-snug
+                           dark:group-hover:text-white transition-colors duration-200 line-clamp-2"
           >
             {title}
           </h3>
         )}
-        <p className="text-textSecondary text-xs leading-relaxed line-clamp-2">
+        <p className="dark:text-textSecondary text-xs leading-relaxed line-clamp-2">
           {description}
         </p>
       </div>
@@ -138,7 +142,7 @@ const ProjectCard = ({ project, onRename, onDelete }) => {
       <div ref={menuRef} className="absolute top-4 right-4">
         <button
           onClick={handleMenuOpen}
-          className="flex items-center justify-center w-7 h-7 rounded-lg
+          className="flex items-center cursor-pointer justify-center w-7 h-7 rounded-lg
                      text-textSecondary opacity-0 group-hover:opacity-100
                      hover:bg-background hover:text-textPrimary
                      transition-all duration-150"
@@ -151,13 +155,13 @@ const ProjectCard = ({ project, onRename, onDelete }) => {
         {menuOpen && (
           <div
             className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-border
-                       bg-surface shadow-xl shadow-black/40 z-50 overflow-hidden
+                       dark:bg-surface bg-white shadow-xl shadow-black/40 z-50 overflow-hidden
                        animate-fadeIn"
           >
             <button
               onClick={handleRenameClick}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm
-                         text-textSecondary hover:text-textPrimary hover:bg-surfaceLight
+              className="w-full flex items-center cursor-pointer gap-3 px-4 py-2.5 text-sm
+                         dark:text-textSecondary hover:text-textPrimary hover:bg-surfaceLight
                          transition-colors duration-150"
             >
               <HiOutlinePencil className="text-base shrink-0" />
@@ -178,13 +182,13 @@ const ProjectCard = ({ project, onRename, onDelete }) => {
 
       {/* Footer meta */}
       <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/60">
-        <div className="flex items-center gap-1.5 text-textSecondary text-xs">
+        <div className="flex items-center gap-1.5 dark:text-textSecondary text-xs">
           <HiOutlineDocument className="text-sm" />
           <span>
             {sourcesCount} {sourcesCount === 1 ? "source" : "sources"}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-textSecondary text-xs">
+        <div className="flex items-center gap-1.5 dark:text-textSecondary text-xs">
           <HiOutlineClock className="text-sm" />
           <span>{formatRelativeTime(updatedAt)}</span>
         </div>

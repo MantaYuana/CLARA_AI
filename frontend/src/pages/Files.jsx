@@ -50,7 +50,7 @@ const Files = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-backgroundBlack flex flex-col">
+    <div className="min-h-screen dark:bg-backgroundBlack flex flex-col">
       <Navbar />
 
       <div className="flex-1 flex justify-center">

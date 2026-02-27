@@ -28,7 +28,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-backgroundBlack font-poppins">
+    <div className="min-h-screen bg-white dark:bg-backgroundBlack font-poppins">
       <Navbar />
 
       <HomeHero />
