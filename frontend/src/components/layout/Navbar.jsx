@@ -68,7 +68,7 @@ const Navbar = () => {
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             location.pathname === "/"
               ? "dark:bg-surfaceLight border-surfaceLight border text-primary"
-              : "dark:text-textSecondary hover:text-textPrimary hover:bg-surface"
+              : "dark:text-textSecondary hover:bg-secondary/25 border-secondary dark:hover:bg-surface"
           }`}
         >
           <HiOutlineDocumentText className="text-base" />
@@ -81,7 +81,7 @@ const Navbar = () => {
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             location.pathname === "/my-files"
               ? "dark:bg-surfaceLight border-surfaceLight border text-primary"
-              : "dark:text-textSecondary hover:text-textPrimary hover:bg-surface"
+              : "dark:text-textSecondary hover:bg-secondary/25 border-secondary dark:hover:bg-surface"
           }`}
         >
           <HiOutlineFolder className="text-base" />
@@ -93,12 +93,12 @@ const Navbar = () => {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-surface transition duration-200"
+          className="p-2 rounded-lg cursor-pointer hover:bg-secondary/25 dark:hover:bg-surface transition duration-200"
         >
           {isDark ? (
-            <HiOutlineMoon className="text-gray-700 text-lg" />
+            <HiOutlineMoon className="text-gray-700 text-xl" />
           ) : (
-            <HiOutlineSun className="text-yellow-400 text-lg" />
+            <HiOutlineSun className="text-yellow-400 text-xl" />
           )}
         </button>
 
@@ -113,7 +113,7 @@ const Navbar = () => {
             <Link
               to="/auth"
               className="ml-2 px-4 py-2 rounded-lg text-sm font-medium
-                   bg-primary text-white
+                   bg-primary border-primary border text-white
                    hover:bg-primary/90
                    transition-all duration-200"
             >
