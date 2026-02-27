@@ -8,7 +8,6 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "init-schema": "ts-node src/scripts/initSchema.ts",
-    "seed": "ts-node src/scripts/seedKnowledge.ts",
     "seed:pdf": "ts-node src/scripts/seedFromPdf.ts",
     "test": "node node_modules/jest/bin/jest.js"
   },
