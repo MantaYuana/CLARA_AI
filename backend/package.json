@@ -1,8 +1,45 @@
 {
+  "name": "clara-backend",
+  "version": "1.0.0",
+  "description": "CLARA – Contract & Legal AI Reasoning Assistant backend",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "init-schema": "ts-node src/scripts/initSchema.ts",
+    "seed": "ts-node src/scripts/seedKnowledge.ts",
+    "test": "jest --runInBand"
+  },
   "dependencies": {
     "@google-cloud/vision": "^5.3.4",
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^5.2.1",
-    "llamaindex": "^0.12.1",
-    "neo4j-driver": "^6.0.1"
+    "multer": "^1.4.5-lts.1",
+    "neo4j-driver": "^6.0.1",
+    "uuid": "^11.0.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.9",
+    "@types/uuid": "^10.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.7.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/*.test.ts"
+    ]
   }
 }
