@@ -2,11 +2,18 @@
  * contract.ts
  * POST /api/v1/contract/review
  *
+ * Full contract review pipeline:
+ *   OCR (if file attached) → clause extraction → guardrail checks →
+ *   hybrid retrieval → Gemini reasoning with confidence scoring + citations
+ *
  * Accepts:
- *   - multipart/form-data: file (PDF or image) + optional text + question
+ *   - multipart/form-data: file (PDF or image) + optional question
  *   - application/json: { text, question }
  *
- * Pipeline: OCR → segment + embed + store clauses → guardrail → hybrid retrieval → Gemini reasoning
+ * @swagger
+ * tags:
+ *   name: Contract
+ *   description: Full AI-powered contract review pipeline
  */
 import { Router, Request, Response } from "express";
 import multer from "multer";
@@ -19,6 +26,7 @@ import { hybridRetrieval } from "../services/retrieval/hybridRetrieval";
 import { reason } from "../services/reasoning/reasoningService";
 import { getSession } from "../config/neo4j";
 import { TaskType } from "@google/generative-ai";
+import { success, error as apiError } from "../utils/response";
 
 const router = Router();
 const upload = multer({
@@ -34,9 +42,11 @@ const TextBodySchema = z.object({
     .default("Analisis kontrak ini dan temukan klausula yang berpotensi merugikan."),
 });
 
-// Store clauses as ContractClause nodes in Neo4j
+// ── Clause storage helper ──────────────────────────────────────────────────────
+
 async function storeClauses(
   documentId: string,
+  userId: string,
   clauses: Awaited<ReturnType<typeof processUploadedFile>>["clauses"],
 ): Promise<void> {
   const session = await getSession();
@@ -44,18 +54,16 @@ async function storeClauses(
     for (const clause of clauses) {
       let embedding: number[] = [];
       try {
-        embedding = await embedText(
-          clause.content || clause.header,
-          TaskType.RETRIEVAL_DOCUMENT,
-        );
+        embedding = await embedText(clause.content || clause.header, TaskType.RETRIEVAL_DOCUMENT);
       } catch {
-        // Skip embedding if API fails; clause is still stored without vector
+        // Skip embedding if API fails; clause still stored without vector
       }
 
       await session.run(
         `
         MERGE (cc:ContractClause { id: $id })
         SET cc.document_id = $documentId,
+            cc.user_id     = $userId,
             cc.index       = $index,
             cc.header      = $header,
             cc.content     = $content,
@@ -65,6 +73,7 @@ async function storeClauses(
         {
           id: `${documentId}-${clause.index}`,
           documentId,
+          userId,
           index: clause.index,
           header: clause.header,
           content: clause.content,
@@ -77,10 +86,194 @@ async function storeClauses(
   }
 }
 
+// ── POST /api/v1/contract/review ──────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/v1/contract/review:
+ *   post:
+ *     summary: Full contract review – OCR + guardrail + AI reasoning + citations
+ *     description: |
+ *       Full contract review pipeline: OCR (if file attached) → guardrail checks →
+ *       hybrid retrieval (dense + BM25 + symbolic) → AI reasoning with confidence
+ *       scoring and legal citations.
+ *
+ *       Accepts **either** a file upload (multipart/form-data) **or** raw contract
+ *       text (application/json). The `question` field is optional and defaults to a
+ *       general Indonesian-law compliance check.
+ *     tags: [Contract]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Contract document — JPEG/PNG/WebP/TIFF/BMP or PDF (max 20 MB)"
+ *               question:
+ *                 type: string
+ *                 description: "Specific review question. Defaults to general compliance check."
+ *                 example: "Apakah kontrak ini memiliki klausula yang bermasalah?"
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [text]
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 minLength: 10
+ *                 description: "Raw contract text as plain string"
+ *               question:
+ *                 type: string
+ *                 description: "Specific review question. Defaults to general compliance check."
+ *     responses:
+ *       200:
+ *         description: Contract review result with reasoning, citations, and guardrail report
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 question:
+ *                   type: string
+ *                   example: "Apakah kontrak ini memiliki klausula yang bermasalah?"
+ *                 answer:
+ *                   type: string
+ *                   example: "Berdasarkan Pasal 1320 KUHPerdata, kontrak ini memiliki..."
+ *                 confidence:
+ *                   type: object
+ *                   properties:
+ *                     level:
+ *                       type: string
+ *                       enum: [GREEN, YELLOW, RED]
+ *                       example: GREEN
+ *                     score:
+ *                       type: number
+ *                       example: 0.9
+ *                     rationale:
+ *                       type: string
+ *                       example: "Semua 3 jalur penalaran setuju..."
+ *                 citations:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       reference:
+ *                         type: string
+ *                         example: "Pasal 1320"
+ *                       source:
+ *                         type: string
+ *                         example: "KUHPerdata"
+ *                 clauses:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       index:
+ *                         type: integer
+ *                       header:
+ *                         type: string
+ *                         example: "Pasal 1"
+ *                       content_preview:
+ *                         type: string
+ *                       pasal_references:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                 guardrail:
+ *                   type: object
+ *                   properties:
+ *                     has_violations:
+ *                       type: boolean
+ *                     violation_count:
+ *                       type: integer
+ *                     critical_violations:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["interest_rate_per_annum"]
+ *                     checks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           metric:
+ *                             type: string
+ *                             example: "interest_rate_per_annum"
+ *                           extracted_value:
+ *                             type: number
+ *                             example: 36
+ *                           limit_value:
+ *                             type: number
+ *                             example: 24
+ *                           status:
+ *                             type: string
+ *                             enum: [OK, EXCEEDS_LIMIT, WARNING]
+ *                             example: "EXCEEDS_LIMIT"
+ *                           message:
+ *                             type: string
+ *                             example: "⚠️ Nilai 36% melebihi batas maksimum 24%..."
+ *                 retrieval_context:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "article-1320"
+ *                       label:
+ *                         type: string
+ *                         example: "Article"
+ *                       title:
+ *                         type: string
+ *                         example: "Pasal 1320 KUHPerdata"
+ *                       hybrid_score:
+ *                         type: number
+ *                         example: 0.88
+ *                       sources:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                         example: ["dense", "bm25"]
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     context_nodes_used:
+ *                       type: integer
+ *                       example: 5
+ *                     reasoning_paths_generated:
+ *                       type: integer
+ *                       example: 3
+ *       400:
+ *         description: Neither file nor text provided
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_INPUT
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: OCR, retrieval, or reasoning failure
+ */
 router.post(
   "/review",
   upload.single("file"),
   async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
+
     try {
       let contractText = "";
       const question =
@@ -88,55 +281,66 @@ router.post(
         "Analisis kontrak ini dan temukan klausula yang berpotensi merugikan.";
       const documentId = uuidv4();
 
-      // Extract text
+      // ── File path ──────────────────────────────────────────────────────────
       if (req.file) {
         const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
         contractText = ocrResult.raw_text;
 
-        // Store clauses in background (non-blocking for response speed)
-        storeClauses(documentId, ocrResult.clauses).catch((err) =>
+        storeClauses(documentId, userId, ocrResult.clauses).catch((err) =>
           console.warn("Clause storage warning:", err?.message),
         );
 
-        // Run all pipeline steps
         const [guardrail, context] = await Promise.all([
           runGuardrailChecks(contractText),
           hybridRetrieval(question, documentId),
         ]);
         const reasoning = await reason(question, context);
 
-        res.json({
-          document_id: documentId,
-          answer: reasoning.answer,
-          confidence: reasoning.confidence,
-          citations: reasoning.citations,
-          clauses: ocrResult.clauses.map((c) => ({
-            index: c.index,
-            header: c.header,
-            content_preview: c.content_preview,
-            pasal_references: c.pasal_references,
-          })),
-          guardrail: {
-            is_safe: guardrail.is_safe,
-            critical_violations: guardrail.critical_violations,
-            warning_count: guardrail.warning_count,
-            all_checks: guardrail.checks,
-          },
-          language: "id",
-        });
+        res.json(
+          success({
+            success: true,
+            question,
+            document_id: documentId,
+            answer: reasoning.answer,
+            confidence: reasoning.confidence,
+            citations: reasoning.citations,
+            clauses: ocrResult.clauses.map((c) => ({
+              index: c.index,
+              header: c.header,
+              content_preview: c.content_preview,
+              pasal_references: c.pasal_references,
+            })),
+            guardrail: {
+              has_violations: !guardrail.is_safe,
+              violation_count: guardrail.critical_violations.length,
+              critical_violations: guardrail.critical_violations,
+              checks: guardrail.checks,
+            },
+            retrieval_context: context.map((n) => ({
+              id: n.id,
+              label: n.label,
+              title: n.title,
+              hybrid_score: n.score,
+              source: n.source,
+            })),
+            meta: {
+              context_nodes_used: context.length,
+              reasoning_paths_generated: 3,
+            },
+            language: "id",
+          }),
+        );
         return;
       }
 
-      // Text - only path
+      // ── Text-only path ─────────────────────────────────────────────────────
       const parsed = TextBodySchema.safeParse(req.body);
-      if (!parsed.success || (!parsed.data.text && !req.file)) {
-        res
-          .status(400)
-          .json({ error: 'Provide either a file upload or a "text" field.' });
+      if (!parsed.success || !parsed.data.text) {
+        res.status(400).json(apiError("INVALID_INPUT", 'Provide either a file upload or a "text" field.'));
         return;
       }
 
-      contractText = parsed.data.text ?? "";
+      contractText = parsed.data.text;
       const resolvedQuestion = parsed.data.question;
 
       const [guardrail, context] = await Promise.all([
@@ -147,24 +351,39 @@ router.post(
         { role: "user", content: `Kontrak untuk dianalisis:\n${contractText}` },
       ]);
 
-      res.json({
-        document_id: documentId,
-        answer: reasoning.answer,
-        confidence: reasoning.confidence,
-        citations: reasoning.citations,
-        clauses: [],
-        guardrail: {
-          is_safe: guardrail.is_safe,
-          critical_violations: guardrail.critical_violations,
-          warning_count: guardrail.warning_count,
-          all_checks: guardrail.checks,
-        },
-        language: "id",
-      });
+      res.json(
+        success({
+          success: true,
+          question: resolvedQuestion,
+          document_id: documentId,
+          answer: reasoning.answer,
+          confidence: reasoning.confidence,
+          citations: reasoning.citations,
+          clauses: [],
+          guardrail: {
+            has_violations: !guardrail.is_safe,
+            violation_count: guardrail.critical_violations.length,
+            critical_violations: guardrail.critical_violations,
+            checks: guardrail.checks,
+          },
+          retrieval_context: context.map((n) => ({
+            id: n.id,
+            label: n.label,
+            title: n.title,
+            hybrid_score: n.score,
+            source: n.source,
+          })),
+          meta: {
+            context_nodes_used: context.length,
+            reasoning_paths_generated: 3,
+          },
+          language: "id",
+        }),
+      );
     } catch (err: unknown) {
       console.error("[contract/review]", err);
       const message = err instanceof Error ? err.message : "Internal server error";
-      res.status(500).json({ error: message });
+      res.status(500).json(apiError("INTERNAL", message));
     }
   },
 );
