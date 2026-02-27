@@ -31,7 +31,7 @@ const QuerySchema = z.object({
     .default([]),
 });
 
-// ── Fallback: fetch raw_text from Document node ───────────────────────────────
+//   Fallback: fetch raw_text from Document node                ─
 
 async function fetchDocumentText(documentId: string): Promise<string | null> {
   const session = await getSession();
@@ -52,7 +52,7 @@ async function fetchDocumentText(documentId: string): Promise<string | null> {
   }
 }
 
-// ── POST /api/v1/query ────────────────────────────────────────────────────────
+//   POST /api/v1/query      ─
 
 /**
  * @swagger

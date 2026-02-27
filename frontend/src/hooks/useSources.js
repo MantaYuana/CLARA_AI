@@ -78,6 +78,10 @@ const useSources = () => {
               : s,
           ),
         );
+        localStorage.setItem("lastDocumentId", documentId);
+        console.log(
+          `[useSources] "${item.name}" analyzed successfully, documentId: ${documentId}`,
+        );
         toast.success(`"${item.name}" berhasil dianalisa`);
       } catch (err) {
         console.error(
@@ -94,21 +98,15 @@ const useSources = () => {
 
   const toggleSelect = (id) => {
     setSources((prev) => {
-      const target = prev.find((s) => s.id === id);
-      if (!target) return prev;
+      const clicked = prev.find((s) => s.id === id);
+      const isAlreadySelected = clicked?.selected;
 
-      // Prevent selecting more than MAX_SELECTED simultaneously
-      if (!target.selected) {
-        const currentSelected = prev.filter((s) => s.selected).length;
-        if (currentSelected >= MAX_SELECTED) {
-          toast.error(`Maksimal ${MAX_SELECTED} file dapat dipilih sekaligus.`);
-          return prev;
+      return prev.map((s) => {
+        if (s.id === id && s.status === "ready") {
+          return { ...s, selected: !isAlreadySelected };
         }
-      }
-
-      return prev.map((s) =>
-        s.id === id ? { ...s, selected: !s.selected } : s,
-      );
+        return { ...s, selected: false };
+      });
     });
   };
 

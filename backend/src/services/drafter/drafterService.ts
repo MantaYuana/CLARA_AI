@@ -52,10 +52,13 @@ export interface DrafterResponse {
 
 interface ExtractedFields {
   party_a_name?: string;
+  party_a_details?: string;
   party_b_name?: string;
+  party_b_details?: string;
   scope?: string;
   duration?: string;
   value?: string;
+  payment_terms?: string;
   penalty?: string;
   jurisdiction?: string;
   [key: string]: string | undefined;
@@ -136,12 +139,15 @@ Kembalikan HANYA objek JSON tanpa penjelasan tambahan.
 
 Field yang dibutuhkan:
 - party_a_name: nama pihak pertama (perusahaan/individu)
-- party_b_name: nama pihak kedua
-- scope: ruang lingkup / tujuan kerja sama
-- duration: jangka waktu (contoh: "1 tahun", "12 bulan")
+- party_a_details: detail pihak pertama (alamat lengkap, NIK/NIB, jabatan, atau perwakilan)
+- party_b_name: nama pihak kedua (perusahaan/mitra/individu)
+- party_b_details: detail pihak kedua (alamat lengkap, NIK/NIB, jabatan, atau perwakilan)
+- scope: ruang lingkup / kewajiban masing-masing pihak secara spesifik
+- duration: jangka waktu (contoh: "1 tahun", "12 bulan", "sampai selesai")
 - value: nilai/harga kesepakatan (jika ada)
-- penalty: ketentuan denda (jika ada)
-- jurisdiction: kota untuk pengadilan penyelesaian sengketa
+- payment_terms: mekanisme/cara pembayaran (termin, cicilan, lunas, dll)
+- penalty: ketentuan denda atau sanksi keterlambatan (jika ada)
+- jurisdiction: kota domisili pengadilan untuk penyelesaian sengketa
 
 Percakapan:
 ${historyText}
@@ -173,9 +179,18 @@ function assessCompleteness(
   fields: ExtractedFields,
   documentType: DocumentType,
 ): { score: number; missingCritical: string[] } {
-  const criticalFields = ["party_a_name", "party_b_name", "scope", "duration"];
+  const criticalFields = [
+    "party_a_name",
+    "party_a_details",
+    "party_b_name",
+    "party_b_details",
+    "scope",
+    "duration"
+  ];
   const optionalFields =
-    documentType === "PKS" ? ["value", "jurisdiction"] : ["jurisdiction"];
+    documentType === "PKS"
+      ? ["value", "payment_terms", "penalty", "jurisdiction"]
+      : ["value", "jurisdiction"];
 
   const missingCritical = criticalFields.filter((f) => !fields[f]);
   const presentOptional = optionalFields.filter((f) => !!fields[f]).length;
@@ -207,13 +222,16 @@ function detectEvasion(history: ConversationTurn[], missingCritical: string[]): 
   if (!missingCritical.length || history.length < 2) return false;
 
   const fieldLabels: Record<string, string[]> = {
-    party_a_name: ["pihak pertama", "nama", "perusahaan", "individu"],
-    party_b_name: ["pihak kedua", "nama", "mitra"],
-    scope: ["ruang lingkup", "tujuan", "kerja sama", "lingkup"],
-    duration: ["jangka waktu", "durasi", "berapa lama", "bulan", "tahun"],
-    value: ["nilai", "harga", "berapa", "rp"],
-    jurisdiction: ["kota", "pengadilan", "yurisdiksi", "sengketa"],
-    penalty: ["denda", "penalti", "sanksi"],
+    party_a_name: ["pihak pertama", "nama", "perusahaan", "individu", "siapa"],
+    party_a_details: ["alamat", "jabatan", "nik", "detail pihak pertama", "identitas"],
+    party_b_name: ["pihak kedua", "nama", "mitra", "siapa"],
+    party_b_details: ["alamat", "jabatan", "nik", "detail pihak kedua", "identitas"],
+    scope: ["ruang lingkup", "tujuan", "kerja sama", "lingkup", "kewajiban", "tugas"],
+    duration: ["jangka waktu", "durasi", "berapa lama", "bulan", "tahun", "selesai"],
+    value: ["nilai", "harga", "berapa", "rp", "biaya"],
+    payment_terms: ["cara bayar", "termin", "cicil", "lunas", "transfer", "pembayaran"],
+    jurisdiction: ["kota", "pengadilan", "yurisdiksi", "sengketa", "domisili"],
+    penalty: ["denda", "penalti", "sanksi", "terlambat"],
   };
 
   const topField = missingCritical[0];
@@ -258,13 +276,16 @@ async function generateProactiveQuestion(
     .join("\n");
 
   const fieldLabels: Record<string, string> = {
-    party_a_name: "nama pihak pertama",
-    party_b_name: "nama pihak kedua",
-    scope: "ruang lingkup kerja sama",
-    duration: "jangka waktu perjanjian",
-    value: "nilai kesepakatan (Rp)",
-    jurisdiction: "kota penyelesaian sengketa",
-    penalty: "ketentuan denda",
+    party_a_name: "nama subjek Pihak Pertama",
+    party_a_details: "alamat lengkap dan identitas (NIK/Jabatan) Pihak Pertama",
+    party_b_name: "nama subjek Pihak Kedua",
+    party_b_details: "alamat lengkap dan identitas (NIK/Jabatan) Pihak Kedua",
+    scope: "detail ruang lingkup kerja dan kewajiban masing-masing pihak",
+    duration: "jangka waktu berlakunya perjanjian",
+    value: "nilai kesepakatan atau harga (Rp)",
+    payment_terms: "mekanisme atau cara pembayaran",
+    jurisdiction: "kota domisili hukum penyelesaian sengketa",
+    penalty: "ketentuan denda atau sanksi keterlambatan",
   };
 
   const topMissing = missingCritical[0];
@@ -272,24 +293,23 @@ async function generateProactiveQuestion(
 
   const evasionInstruction = isEvasion
     ? `Pengguna tampaknya belum menjawab pertanyaan sebelumnya tentang "${fieldLabel}".
-Tanyakan kembali dengan sopan namun tegas — gunakan kata-kata yang sedikit berbeda dari sebelumnya.
-Contoh pola: "Sebelum saya lanjutkan membuat dokumennya, saya masih perlu tahu [X]. Boleh dijawab terlebih dahulu?"
-JANGAN lanjutkan ke topik lain atau menyebut field lain.`
-    : `Buatlah SATU pertanyaan yang natural, ramah, dan spesifik untuk mendapatkan informasi tersebut.
-JANGAN bertanya lebih dari satu hal sekaligus.`;
+Tanyakan kembali dengan sopan namun lebih spesifik. Berikan contoh informasi yang kamu harapkan.
+JANGAN beralih ke poin lain sebelum ini terjawab.`
+    : `Ajukan pertanyaan yang interaktif, natural, dan berempati layaknya konsultan hukum yang santai tapi profesional.
+Jangan seperti robot yang menginterogasi. Jika meminta detail identitas, kamu boleh bertanya sekaligus tentang nama dan alamat, atau memandu mereka menyebutkan hal yang biasa ada di kontrak. Boleh tanya 1-2 hal yang sangat berkaitan bersamaan asal ringkas. Beri sedikit pujian/respon positif atas informasi sebelumnya jika relevan.`;
 
   const prompt = `Kamu adalah CLARA, asisten hukum AI untuk UMKM Indonesia.
-Kamu sedang membantu user membuat dokumen ${documentType}.
+Kamu sedang membantu pengguna menyusun Draf ${documentType}.
 
-Percakapan terbaru:
+Percakapan sejauh ini:
 ${conversationText}
 
-Field yang masih kurang: ${missingCritical.map((f) => fieldLabels[f] ?? f).join(", ")}.
-Field terpenting yang harus ditanyakan sekarang: ${fieldLabel}.
+Informasi penting yang saat ini MASIH BELUM LENGKAP: ${missingCritical.map((f) => fieldLabels[f] ?? f).join(", ")}.
+Fokus utama yang ditanyakan sekarang adalah: ${fieldLabel}.
 
 ${evasionInstruction}
 
-Gunakan Bahasa Indonesia yang hangat dan profesional.`;
+Gunakan Bahasa Indonesia yang hangat, komunikatif, dan selipkan emoji sesekali agar tidak kaku. Jawablah seolah berdialog langsung.`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -531,7 +551,7 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
 
   if (score < MIN_CONFIDENCE) {
     await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
-      () => {},
+      () => { },
     );
     const isEvasion = detectEvasion(req.history, missingCritical);
     const question = await generateProactiveQuestion(
@@ -587,7 +607,7 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   }
 
   await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
-    () => {},
+    () => { },
   );
 
   return {

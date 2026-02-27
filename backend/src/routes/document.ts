@@ -43,7 +43,7 @@ const upload = multer({
     },
 });
 
-// ── Helpers     ─
+//   Helpers     ─
 
 async function saveDocumentNode(
     documentId: string,
@@ -125,7 +125,7 @@ async function storeClauses(
     return storedIds;
 }
 
-// ── POST /api/v1/document/analyze    
+//   POST /api/v1/document/analyze    
 
 /**
  * @swagger
@@ -285,7 +285,7 @@ router.post(
     },
 );
 
-// ── GET /api/v1/document/:documentId   ─────
+//   GET /api/v1/document/:documentId     ─
 
 /**
  * @swagger
@@ -388,7 +388,7 @@ router.get(
     },
 );
 
-// ── GET /api/v1/document/analyze/:jobId/status   
+//   GET /api/v1/document/analyze/:jobId/status   
 
 /**
  * @swagger
@@ -434,5 +434,109 @@ router.get(
         }
     },
 );
+
+//   GET /api/v1/document/user  
+
+/**
+ * @swagger
+ * /api/v1/document/user:
+ *   get:
+ *     summary: Get all documents and drafter projects for the current user
+ *     description: Retrieve a combined history of uploaded contract documents and active/completed drafter sessions for the logged-in user.
+ *     tags: [Document]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user projects and documents
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       type:
+ *                         type: string
+ *                         enum: [review, draft]
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/user", async (req: Request, res: Response): Promise<void> => {
+    // Note: requires auth middleware to be active on /api/v1/document in index.ts
+    const userId = (req as Request & { user?: { userId: string } }).user?.userId;
+
+    if (!userId || userId === "anonymous") {
+        res.status(401).json(apiError("UNAUTHORIZED", "You must be logged in to view your documents."));
+        return;
+    }
+
+    const session = await getSession();
+    try {
+        const docResult = await session.run(
+            `
+            MATCH (d:Document { user_id: $userId })
+            RETURN d.id AS id, 
+                   d.filename AS title, 
+                   d.created_at AS created_at,
+                   "review" AS type
+            ORDER BY d.created_at DESC
+            `,
+            { userId }
+        );
+
+        const draftResult = await session.run(
+            `
+            MATCH (ds:DrafterSession { user_id: $userId })
+            RETURN ds.id AS id, 
+                   COALESCE(ds.fields.party_a_name, "Draft") + " - " + ds.document_type AS title,
+                   ds.updated_at AS created_at,
+                   "draft" AS type
+            ORDER BY ds.updated_at DESC
+            `,
+            { userId }
+        );
+
+        const documents = docResult.records.map((r) => ({
+            id: r.get("id"),
+            title: r.get("title"),
+            created_at: r.get("created_at")?.toString() || new Date().toISOString(),
+            type: r.get("type"),
+        }));
+
+        const drafts = draftResult.records.map((r) => ({
+            id: r.get("id"),
+            title: r.get("title"),
+            created_at: r.get("created_at")?.toString() || new Date().toISOString(),
+            type: r.get("type"),
+        }));
+
+        // Combine and sort by date descending
+        const history = [...documents, ...drafts].sort((a, b) => {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        res.json(success(history));
+    } catch (err: unknown) {
+        console.error("[document/user]", err);
+        const message = err instanceof Error ? err.message : "Internal server error";
+        res.status(500).json(apiError("INTERNAL", message));
+    } finally {
+        await session.close();
+    }
+});
 
 export default router;

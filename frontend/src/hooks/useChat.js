@@ -113,29 +113,27 @@ const useChat = () => {
     }
 
     // Optimistically add user message
-    addMessage("user", message.trim());
+    addMessage("user", message.trim(), {
+      attachment:
+        mode === "review" && selectedFile
+          ? { name: selectedFile.name, size: selectedFile.size }
+          : null,
+    });
     setIsLoading(true);
 
     try {
       if (mode === "review") {
         // ── Review Contract mode ───────────────────────────────────────────
-        const {
-          content,
-          confidenceScore,
-          citations,
-          label,
-          clauses,
-          rationale,
-        } = await reviewContract({
-          file: selectedFile,
-          question: message.trim(),
-        });
+        const { content, confidenceScore, citations, label, rationale } =
+          await reviewContract({
+            file: selectedFile,
+            question: message.trim(),
+          });
 
         addMessage("assistant", content, {
           confidenceScore: confidenceScore ?? null,
           citations: citations ?? [],
           label: label ?? null,
-          clauses: clauses ?? [],
           rationale: rationale ?? null,
         });
       } else if (mode === "draft") {
@@ -145,9 +143,11 @@ const useChat = () => {
           content,
           status,
           documentType,
+          documentNumber,
           bindingWarning,
           clarifyingQuestions,
           draft,
+          pdfBase64,
         } = await drafterChat({
           session_id: draftSessionId,
           message: message.trim(),
@@ -157,9 +157,11 @@ const useChat = () => {
         addMessage("assistant", content, {
           status: status ?? null,
           documentType: documentType ?? null,
+          documentNumber: documentNumber ?? null,
           bindingWarning: bindingWarning ?? false,
           clarifyingQuestions: clarifyingQuestions ?? [],
           draft: draft ?? null,
+          pdfBase64: pdfBase64 ?? null,
         });
       } else {
         // ── Query mode (default) ───────────────────────────────────────────
@@ -189,7 +191,33 @@ const useChat = () => {
     }
   };
 
-  return { messages, activeMode, setActiveMode, isLoading, sendChatMessage };
+  const queryOnly = async ({
+    message,
+    selectedSourceIds = [],
+    mode = null,
+  }) => {
+    try {
+      const { content } = await sendMessage({
+        message,
+        fileIds: selectedSourceIds,
+        mode,
+      });
+
+      return { content };
+    } catch (err) {
+      console.error("[queryOnly] Error:", err);
+      return null;
+    }
+  };
+
+  return {
+    messages,
+    activeMode,
+    setActiveMode,
+    isLoading,
+    sendChatMessage,
+    queryOnly,
+  };
 };
 
 export default useChat;

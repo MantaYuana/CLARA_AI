@@ -3,25 +3,34 @@ import {
   HiOutlineSparkles,
   HiOutlineShieldCheck,
   HiOutlineShieldExclamation,
+  HiOutlineCheckCircle,
+  HiOutlineQuestionMarkCircle,
+  HiOutlineExclamationCircle,
 } from "react-icons/hi2";
 import {
-  HiUser,
   HiOutlineExternalLink,
   HiOutlineDocumentText,
+  HiOutlineDocumentDuplicate,
 } from "react-icons/hi";
 
-// ── Confidence score helpers ─────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Format bytes → human-readable size */
+const formatSize = (bytes) => {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 /**
- * Returns Tailwind color classes and label based on score (0–1).
- * ≥ 0.75  → green  (High)
- * 0.45–0.74 → yellow (Medium)
- * < 0.45  → red    (Low)
+ * Returns color classes based on confidence score (0–1).
+ * ≥ 0.75 → green (High), 0.45–0.74 → yellow (Medium), < 0.45 → red (Low)
  */
 const getScoreStyle = (score) => {
   if (score === null || score === undefined) return null;
   const pct = Math.round(score * 100);
-  if (score >= 0.75) {
+  if (score >= 0.75)
     return {
       pct,
       label: "High Confidence",
@@ -31,8 +40,7 @@ const getScoreStyle = (score) => {
       bg: "bg-green-500/10",
       dot: "bg-green-400",
     };
-  }
-  if (score >= 0.45) {
+  if (score >= 0.45)
     return {
       pct,
       label: "Medium Confidence",
@@ -42,7 +50,6 @@ const getScoreStyle = (score) => {
       bg: "bg-yellow-500/10",
       dot: "bg-yellow-400",
     };
-  }
   return {
     pct,
     label: "Low Confidence",
@@ -54,7 +61,29 @@ const getScoreStyle = (score) => {
   };
 };
 
-// ── LabelBadge (review mode: aman/berbahaya) ─────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+/** File attachment chip shown on user bubble (review mode) */
+const AttachmentChip = ({ attachment }) => {
+  if (!attachment) return null;
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/20 max-w-fit">
+      <HiOutlineDocumentText className="text-white/80 text-base shrink-0" />
+      <div className="flex flex-col min-w-0">
+        <span className="text-xs text-white font-medium truncate max-w-[180px]">
+          {attachment.name}
+        </span>
+        {attachment.size && (
+          <span className="text-[10px] text-white/60">
+            {formatSize(attachment.size)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/** Contract assessment badge: aman / berbahaya */
 const LabelBadge = ({ label }) => {
   if (!label) return null;
   const isSafe = label.toLowerCase() === "aman";
@@ -77,59 +106,22 @@ const LabelBadge = ({ label }) => {
   );
 };
 
-// ── ClauseList (review mode: relevant clauses) ───────────────────────────────
-const ClauseList = ({ clauses }) => {
-  if (!clauses || clauses.length === 0) return null;
-  return (
-    <div className="mt-3 pt-3 border-t border-border/60">
-      <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold mb-2">
-        Relevant Clauses
-      </p>
-      <div className="flex flex-col gap-1.5">
-        {clauses.map((clause, idx) => (
-          <div
-            key={idx}
-            className="px-2.5 py-2 rounded-lg bg-backgroundBlack/60 border border-border/40"
-          >
-            <p className="text-[10px] text-textSecondary/50 font-semibold mb-0.5">
-              Clause {clause.index ?? idx + 1}
-            </p>
-            <p className="text-xs text-textSecondary leading-snug">
-              {clause.content_preview ?? clause.content}
-            </p>
-            {clause.legal_relevance && (
-              <p className="text-[10px] text-primary/70 mt-1 italic">
-                {clause.legal_relevance}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ── ConfidenceBar ────────────────────────────────────────────────────────────
+/** Confidence progress bar */
 const ConfidenceBar = ({ score }) => {
   const style = getScoreStyle(score);
   if (!style) return null;
-
   return (
     <div
       className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${style.border} ${style.bg}`}
     >
-      {/* Dot */}
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`} />
-      {/* Label */}
       <span className={`text-xs font-medium ${style.text}`}>{style.label}</span>
-      {/* Progress bar */}
       <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-700 ${style.bar}`}
           style={{ width: `${style.pct}%` }}
         />
       </div>
-      {/* Percentage */}
       <span className={`text-xs font-semibold tabular-nums ${style.text}`}>
         {style.pct}%
       </span>
@@ -137,10 +129,9 @@ const ConfidenceBar = ({ score }) => {
   );
 };
 
-// ── CitationList ─────────────────────────────────────────────────────────────
+/** Source citations list */
 const CitationList = ({ citations }) => {
   if (!citations || citations.length === 0) return null;
-
   return (
     <div className="mt-3 pt-3 border-t border-border/60">
       <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold mb-2">
@@ -148,13 +139,13 @@ const CitationList = ({ citations }) => {
       </p>
       <div className="flex flex-col gap-1.5">
         {citations.map((cite, idx) => {
-          // Support both string citations and object citations
           const isObj = typeof cite === "object" && cite !== null;
           const title = isObj
             ? (cite.title ?? cite.name ?? cite.text ?? `Source ${idx + 1}`)
             : cite;
           const url = isObj ? (cite.url ?? cite.link ?? null) : null;
           const page = isObj ? (cite.page ?? cite.page_number ?? null) : null;
+          const subtitle = isObj ? (cite.text ?? cite.source ?? null) : null;
 
           return (
             <div
@@ -169,6 +160,11 @@ const CitationList = ({ citations }) => {
                 <p className="text-textSecondary text-xs leading-snug truncate">
                   {title}
                 </p>
+                {subtitle && subtitle !== title && (
+                  <p className="text-textSecondary/50 text-[10px] mt-0.5 truncate">
+                    {subtitle}
+                  </p>
+                )}
                 {page && (
                   <p className="text-textSecondary/50 text-[10px] mt-0.5">
                     Page {page}
@@ -195,7 +191,146 @@ const CitationList = ({ citations }) => {
   );
 };
 
-// ── Markdown components ──────────────────────────────────────────────────────
+/** Draft mode — status/doc-type/binding warning badge */
+const DraftStatusBadge = ({ status, documentType, bindingWarning }) => {
+  if (!status) return null;
+  const isReady = status === "draft_ready";
+  const isClarify = status === "needs_clarification";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold
+          ${
+            isReady
+              ? "bg-green-500/10 border-green-500/30 text-green-400"
+              : isClarify
+                ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
+                : "bg-primary/10 border-primary/30 text-primary"
+          }`}
+      >
+        {isReady ? (
+          <HiOutlineCheckCircle className="text-base shrink-0" />
+        ) : (
+          <HiOutlineQuestionMarkCircle className="text-base shrink-0" />
+        )}
+        {isReady ? "Draft Siap" : isClarify ? "Perlu Klarifikasi" : status}
+        {documentType && (
+          <span className="ml-auto font-medium opacity-80">{documentType}</span>
+        )}
+      </div>
+      {bindingWarning && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs">
+          <HiOutlineExclamationCircle className="text-base shrink-0" />
+          Kontrak ini memiliki klausul mengikat — perlu review lebih lanjut.
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** Draft mode — numbered clarifying questions with ? icon */
+const ClarifyingQuestionsList = ({ questions }) => {
+  if (!questions || questions.length === 0) return null;
+  return (
+    <div className="mt-1 pt-3 border-t border-border/60">
+      <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold mb-2">
+        Pertanyaan Klarifikasi
+      </p>
+      <div className="flex flex-col gap-2">
+        {questions.map((q, idx) => (
+          <div
+            key={idx}
+            className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-backgroundBlack/60 border border-border/40"
+          >
+            {/* Question mark icon instead of number */}
+            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 shrink-0 mt-0.5">
+              <HiOutlineQuestionMarkCircle className="text-yellow-400 text-xs" />
+            </div>
+            <p className="text-textPrimary text-sm leading-snug">
+              {stripMarkdown(q)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/** Strip common markdown symbols so draft text looks like plain document text */
+const stripMarkdown = (text) => {
+  if (!text) return "";
+  return (
+    text
+      // Remove bold/italic: **text** or *text*
+      .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
+      // Remove heading hashes: ## Title → Title
+      .replace(/^#{1,6}\s+/gm, "")
+      // Remove horizontal rules
+      .replace(/^-{3,}\s*$/gm, "────────────────────────────")
+      // Remove remaining lone asterisks/underscores at line boundaries
+      .replace(/^\s*[\*\-]\s/gm, "  • ")
+      .trim()
+  );
+};
+
+/** Open base64 PDF in a new browser tab */
+const openPdf = (base64) => {
+  try {
+    const byteString = atob(base64);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+      bytes[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e) {
+    console.error("[ChatBubble] Failed to open PDF:", e);
+  }
+};
+
+/** Draft mode — final contract draft as plain text with optional PDF button */
+const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
+  if (!draft) return null;
+  const plainText = stripMarkdown(draft);
+
+  return (
+    <div className="mt-1 pt-3 border-t border-border/60">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <HiOutlineDocumentDuplicate className="text-primary text-sm" />
+          <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
+            Draft Kontrak{documentNumber ? ` · ${documentNumber}` : ""}
+          </p>
+        </div>
+
+        {/* PDF preview button */}
+        {pdfBase64 && (
+          <button
+            onClick={() => openPdf(pdfBase64)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                       bg-primary/20 hover:bg-primary/30 border border-primary/40
+                       text-primary text-xs font-medium
+                       transition-all duration-150 active:scale-95"
+          >
+            <HiOutlineExternalLink className="text-sm" />
+            Lihat PDF
+          </button>
+        )}
+      </div>
+
+      {/* Draft plain text */}
+      <div className="rounded-xl bg-backgroundBlack/60 border border-border/60 p-4 max-h-[420px] overflow-y-auto">
+        <p className="text-sm text-textSecondary leading-relaxed whitespace-pre-wrap font-sans">
+          {plainText}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
 const mdComponents = {
   p: ({ children }) => (
     <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
@@ -246,23 +381,29 @@ const mdComponents = {
   ),
 };
 
-// ── ChatBubble ───────────────────────────────────────────────────────────────
+// ── ChatBubble ────────────────────────────────────────────────────────────────
 /**
  * ChatBubble — renders one chat message.
  *
- * Props:
- *  @param {Object}   message
- *  @param {string}   message.role             — 'user' | 'assistant'
- *  @param {string}   message.content
- * @param {Object} user            — for future use; can be used to show different avatars for multiple users
- *  @param {number|null} message.confidenceScore — 0–1 float (assistant only)
- *  @param {Array}    message.citations         — citation objects (assistant only)
+ * message fields:
+ *   role               'user' | 'assistant'
+ *   content            main text (markdown)
+ *   attachment         { name, size } — file attached by user (review mode)
+ *   confidenceScore    0–1 (query & review modes)
+ *   citations          citation objects (query & review modes)
+ *   label              'aman' | 'berbahaya' (review mode)
+ *   status             'needs_clarification' | 'draft_ready' (draft mode)
+ *   documentType       contract type string (draft mode)
+ *   documentNumber     document reference number (draft mode)
+ *   bindingWarning     boolean (draft mode)
+ *   clarifyingQuestions string[] (draft mode)
+ *   draft              string — final draft text (draft mode)
+ *   pdfBase64          string — base64 PDF for preview (draft mode)
  */
 const ChatBubble = ({ message, user }) => {
   const isUser = message.role === "user";
 
   const name = user?.name || "User";
-
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -270,18 +411,27 @@ const ChatBubble = ({ message, user }) => {
     .substring(0, 2)
     .toUpperCase();
 
+  // ── User bubble ─────────────────────────────────────────────────────────
   if (isUser) {
     return (
       <div className="flex justify-end px-4 max-w-full">
         <div className="flex items-end gap-2 max-w-[75%]">
-          <div
-            className="px-4 py-3 rounded-2xl shadow-md dark:shadow-none rounded-br-sm text-sm leading-relaxed
-                       dark:bg-primary/20 bg-primary text-white dark:text-textPrimary border border-primary/20 whitespace-pre-wrap"
-          >
-            {message.content}
+          <div className="flex flex-col gap-2 items-end">
+            {/* File attachment chip */}
+            <AttachmentChip attachment={message.attachment} />
+
+            {/* Message text */}
+            <div
+              className="px-4 py-3 rounded-2xl shadow-md dark:shadow-none rounded-br-sm text-sm leading-relaxed
+                         dark:bg-primary/20 bg-primary text-white dark:text-textPrimary border border-primary/20 whitespace-pre-wrap"
+            >
+              {message.content}
+            </div>
           </div>
+
+          {/* Avatar */}
           <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-primary/50 bg-surfaceLight border border-primary dark:border-border flex items-center justify-center shrink-0">
-            {user.photoURL ? (
+            {user?.photoURL ? (
               <img
                 src={user.photoURL}
                 alt={user.name}
@@ -290,8 +440,7 @@ const ChatBubble = ({ message, user }) => {
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center
-                          bg-linear-to-br from-secondary to-primary text-white
-                          text-sm font-semibold"
+                            bg-linear-to-br from-secondary to-primary text-white text-sm font-semibold"
               >
                 {initials}
               </div>
@@ -302,48 +451,70 @@ const ChatBubble = ({ message, user }) => {
     );
   }
 
-  // Assistant
+  // ── Assistant bubble ─────────────────────────────────────────────────────
   return (
     <div className="flex justify-start px-4">
       <div className="flex items-start gap-2 max-w-[82%]">
         {/* CLARA icon */}
-        <div className="w-7 h-7 rounded-full  dark:bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-1">
+        <div className="w-7 h-7 rounded-full dark:bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-1">
           <HiOutlineSparkles className="text-primary text-sm" />
         </div>
 
         {/* Bubble */}
         <div
           className="flex flex-col gap-3 px-4 py-3 rounded-2xl rounded-bl-sm
-                        dark:bg-surface  border dark:shadow-none shadow-md border-primary/20 dark:border-border dark:text-textPrimary min-w-0"
+                      dark:bg-surface border dark:shadow-none shadow-md border-primary/20 dark:border-border dark:text-textPrimary min-w-0"
         >
-          {/* ── Review mode: contract label (aman / berbahaya) ── */}
+          {/* Review mode: contract label */}
           <LabelBadge label={message.label} />
 
-          {/* ── Markdown content ── */}
-          <div className="text-sm leading-relaxed">
-            <ReactMarkdown components={mdComponents}>
-              {message.content}
-            </ReactMarkdown>
-          </div>
+          {/* Draft mode: status badge */}
+          <DraftStatusBadge
+            status={message.status}
+            documentType={message.documentType}
+            bindingWarning={message.bindingWarning}
+          />
 
-          {/* ── Confidence score bar ── */}
+          {/* Markdown content — strip markdown for draft mode, render markdown for others */}
+          {message.content && (
+            <div className="text-sm leading-relaxed">
+              {message.status ? (
+                <p className="leading-relaxed whitespace-pre-wrap">
+                  {stripMarkdown(message.content)}
+                </p>
+              ) : (
+                <ReactMarkdown components={mdComponents}>
+                  {message.content}
+                </ReactMarkdown>
+              )}
+            </div>
+          )}
+
+          {/* Draft mode: clarifying questions */}
+          <ClarifyingQuestionsList questions={message.clarifyingQuestions} />
+
+          {/* Draft mode: final draft */}
+          <DraftContent
+            draft={message.draft}
+            pdfBase64={message.pdfBase64}
+            documentNumber={message.documentNumber}
+          />
+
+          {/* Confidence score bar (query & review modes) */}
           {message.confidenceScore !== null &&
             message.confidenceScore !== undefined && (
               <ConfidenceBar score={message.confidenceScore} />
             )}
 
-          {/* ── Citations ── */}
+          {/* Citations (query & review modes) */}
           <CitationList citations={message.citations} />
-
-          {/* ── Review mode: relevant clauses ── */}
-          <ClauseList clauses={message.clauses} />
         </div>
       </div>
     </div>
   );
 };
 
-// ── TypingBubble ─────────────────────────────────────────────────────────────
+// ── TypingBubble ──────────────────────────────────────────────────────────────
 export const TypingBubble = () => (
   <div className="flex justify-start px-4">
     <div className="flex items-end gap-2">

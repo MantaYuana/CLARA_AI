@@ -9,9 +9,6 @@ export default function AuthCallback() {
     try {
       const token = searchParams.get("token");
 
-      console.log("URL:", window.location.href);
-      console.log("TOKEN:", token);
-
       if (!token) {
         console.log("No token found");
         navigate("/auth", { replace: true });
