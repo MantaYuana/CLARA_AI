@@ -217,7 +217,7 @@ export async function extractTextFromImage(
         mimeType: mimeType as string,
       },
     },
-    "Ekstrak semua teks yang ada dalam gambar ini secara verbatim. Pertahankan struktur pasal, ayat, dan judul. Jangan tambahkan komentar atau penjelasan apapun, hanya teks yang terlihat dalam dokumen.",
+    "Extract all text in this image verbatim. Maintain the structure of articles, paragraphs, and headings. Do not add any comments or explanations, only the text visible in the document.",
   ]);
   const text = result.response.text().trim();
   if (!text) {
@@ -237,7 +237,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
         mimeType: "application/pdf",
       },
     },
-    "Ekstrak semua teks dalam dokumen PDF ini secara verbatim, pertahankan struktur pasal, ayat, dan judul. Jangan tambahkan komentar. Format output: teks mentah saja.",
+    "Extract all text in this PDF document verbatim, maintain the structure of articles, paragraphs, and headings. Do not add any comments. Output format: raw text only.",
   ]);
   const text = result.response.text().trim();
   if (!text) {
@@ -274,7 +274,7 @@ export function segmentClauses(rawText: string): Clause[] {
       if (current) segments.push(current);
       current = { header: trimmed, lines: [] };
     } else {
-      if (!current) current = { header: "Pembukaan", lines: [] };
+      if (!current) current = { header: "Opening", lines: [] };
       current.lines.push(trimmed);
     }
   }
@@ -282,7 +282,7 @@ export function segmentClauses(rawText: string): Clause[] {
 
   // If no segments found (plain paragraph text), treat whole text as one clause
   if (segments.length === 0) {
-    segments.push({ header: "Teks Kontrak", lines: [rawText] });
+    segments.push({ header: "Contract Text", lines: [rawText] });
   }
 
   return segments.map((seg, idx) => {
@@ -322,7 +322,7 @@ export async function processUploadedFile(
 
   return {
     raw_text: rawText,
-    language: "id",
+    language: "en",
     clauses,
   };
 }

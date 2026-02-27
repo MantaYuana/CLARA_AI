@@ -141,8 +141,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
         // Prepend document content as a system-level message in the history
         extraHistory = [
           {
-            role: "user" as const,
-            content: `Berikut adalah isi dokumen yang diunggah (document_id: ${document_id}):\n\n${rawText}\n\n---\nGunakan isi dokumen di atas sebagai konteks untuk menjawab pertanyaan berikut.`,
+            role: "user",
+            content: `Here is the content of the uploaded document (document_id: ${document_id}):\n\n${rawText}\n\n---\nUse the document content above as context to answer the following question.`,
           },
           ...extraHistory,
         ];
