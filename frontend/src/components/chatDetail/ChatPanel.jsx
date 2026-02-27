@@ -20,7 +20,7 @@ const ChatPanel = ({ messages, isLoading, onSend, selectedCount }) => {
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <div className="flex-1 flex flex-col min-w-0 bg-background border border-border rounded-2xl overflow-hidden h-full">
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="px-5 py-3 border-b border-border shrink-0">
         <span className="text-textPrimary text-sm font-semibold">Chat</span>

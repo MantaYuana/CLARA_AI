@@ -3,15 +3,16 @@ import * as yup from "yup";
 import toast from "react-hot-toast";
 import { analyzeFile } from "../Services/sourceService";
 
-const MAX_FILES = 5;
-const MAX_SIZE_MB = 10;
+const MAX_SELECTED = 1; // max files that can be checked/selected simultaneously
+const MAX_SIZE_MB = 10; // max size per file (10 MB)
+
 const ACCEPTED_TYPES = [
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-// Yup schema for validating incoming files
+// Yup schema — validates per-file type & size (no total-count limit)
 const fileArraySchema = yup.array().of(
   yup
     .mixed()
@@ -26,11 +27,16 @@ const fileArraySchema = yup.array().of(
 /**
  * useSources — manages uploaded/analyzed file sources.
  *
+ * Rules:
+ *  - Upload  : unlimited files (no total count cap)
+ *  - Select  : at most MAX_SELECTED (5) files active at once
+ *  - Validate: each file ≤ 10 MB, only PDF/DOC/DOCX accepted
+ *
  * Returns:
  *  sources         : all source objects
- *  selectedCount   : number of selected sources
+ *  selectedCount   : number of currently selected sources
  *  processFiles    : (FileList|File[]) => void
- *  toggleSelect    : (id) => void
+ *  toggleSelect    : (id) => void  — blocked when 5 already selected
  *  removeSource    : (id) => void
  */
 const useSources = () => {
@@ -41,15 +47,7 @@ const useSources = () => {
   const processFiles = async (fileList) => {
     const incoming = Array.from(fileList);
 
-    // Guard: total file count
-    if (sources.length + incoming.length > MAX_FILES) {
-      toast.error(
-        `Maksimal ${MAX_FILES} file. Saat ini sudah ada ${sources.length} file.`,
-      );
-      return;
-    }
-
-    // Validate with yup
+    // Validate per-file type and size
     try {
       await fileArraySchema.validate(incoming);
     } catch (err) {
@@ -86,10 +84,25 @@ const useSources = () => {
     }
   };
 
-  const toggleSelect = (id) =>
-    setSources((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, selected: !s.selected } : s)),
-    );
+  const toggleSelect = (id) => {
+    setSources((prev) => {
+      const target = prev.find((s) => s.id === id);
+      if (!target) return prev;
+
+      // Prevent selecting more than MAX_SELECTED simultaneously
+      if (!target.selected) {
+        const currentSelected = prev.filter((s) => s.selected).length;
+        if (currentSelected >= MAX_SELECTED) {
+          toast.error(`Maksimal ${MAX_SELECTED} file dapat dipilih sekaligus.`);
+          return prev;
+        }
+      }
+
+      return prev.map((s) =>
+        s.id === id ? { ...s, selected: !s.selected } : s,
+      );
+    });
+  };
 
   const removeSource = (id) =>
     setSources((prev) => prev.filter((s) => s.id !== id));

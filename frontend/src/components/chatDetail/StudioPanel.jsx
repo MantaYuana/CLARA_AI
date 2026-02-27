@@ -10,14 +10,14 @@ import {
 const MODES = [
   {
     id: "review",
-    label: "Analisa Kontrak",
+    label: "Review Contract",
     description:
       "Analyze legal contracts — risk assessment, clause extraction, compliance review.",
     icon: <HiOutlineMagnifyingGlass className="text-lg" />,
   },
   {
     id: "draft",
-    label: "Create Kontrak",
+    label: "Create Contract",
     description:
       "Generate professional legal contracts with AI-guided templates.",
     icon: <HiOutlinePencilSquare className="text-lg" />,
@@ -38,8 +38,9 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
 
   return (
     <div
-      className={`flex flex-col border-l border-border bg-surface transition-all duration-300 shrink-0
-                  ${collapsed ? "w-12" : "w-60"}`}
+      className={`flex flex-col bg-background border border-border rounded-2xl overflow-hidden
+                  transition-all duration-300 shrink-0 h-full
+                  ${collapsed ? "w-12" : "w-full lg:w-80"}`}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center px-3 py-3 border-b border-border shrink-0">
@@ -73,7 +74,7 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
               className={`p-2 rounded-lg transition-colors ${
                 activeMode === m.id
                   ? "bg-primary/20 text-primary"
-                  : "text-textSecondary hover:text-textPrimary hover:bg-surfaceLight"
+                  : "text-textSecondary hover:text-textPrimary hover:bg-surface"
               }`}
             >
               {m.icon}
@@ -92,7 +93,7 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
                           ${
                             activeMode === m.id
                               ? "bg-primary/15 border-primary/40"
-                              : "border-border hover:border-primary/30 hover:bg-surfaceLight"
+                              : "border-border hover:border-primary/30 hover:bg-surface"
                           }`}
             >
               <div className="flex items-center gap-2">
@@ -122,7 +123,7 @@ const StudioPanel = ({ activeMode, onSetMode }) => {
           ))}
 
           {/* Active mode indicator */}
-          <div className="mt-2 p-3 rounded-xl border border-border bg-backgroundBlack">
+          <div className="mt-2 p-3 rounded-xl border border-border bg-background">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               <span className="text-xs text-textSecondary font-medium">
