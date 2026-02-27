@@ -36,6 +36,7 @@ app.use(
     cors({
         origin: [env.FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"],
         methods: ["GET", "POST", "OPTIONS"],
+        credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"],
     }),
 );
