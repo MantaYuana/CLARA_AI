@@ -51,8 +51,10 @@ services:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - neo4j
-      - redis
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - ./backend/.env
 
