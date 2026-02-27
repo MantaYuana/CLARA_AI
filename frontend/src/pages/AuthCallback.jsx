@@ -18,12 +18,8 @@ export default function AuthCallback() {
         return;
       }
 
-      console.log("Saving token...");
       localStorage.setItem("token", token);
 
-      console.log("Saved token:", localStorage.getItem("token"));
-
-      // delay sedikit supaya tidak bentrok
       setTimeout(() => {
         navigate("/", { replace: true });
       }, 100);
