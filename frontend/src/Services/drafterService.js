@@ -23,18 +23,22 @@ const parseDrafterResponse = (data) => {
         content: data,
         status: null,
         documentType: null,
+        documentNumber: null,
         bindingWarning: false,
         clarifyingQuestions: [],
         draft: null,
+        pdfBase64: null,
       };
     }
   }
 
   const status = parsed?.status ?? null;
   const documentType = parsed?.document_type ?? null;
+  const documentNumber = parsed?.document_number ?? null;
   const bindingWarning = parsed?.binding_warning ?? false;
   const clarifyingQuestions = parsed?.clarifying_questions ?? [];
   const draft = parsed?.draft ?? null;
+  const pdfBase64 = parsed?.pdf_base64 ?? null;
 
   // Natural language answer from the AI — used as the main bubble text
   const content = parsed?.message ?? parsed?.content ?? parsed?.answer ?? "";
@@ -43,9 +47,11 @@ const parseDrafterResponse = (data) => {
     content,
     status,
     documentType,
+    documentNumber,
     bindingWarning,
     clarifyingQuestions,
     draft,
+    pdfBase64,
   };
 };
 
@@ -82,25 +88,31 @@ export const drafterChat = async ({ session_id, message, history = [] }) => {
     content,
     status,
     documentType,
+    documentNumber,
     bindingWarning,
     clarifyingQuestions,
     draft,
+    pdfBase64,
   } = parseDrafterResponse(data);
 
   console.log("[drafterService] Parsed →", {
     status,
     documentType,
+    documentNumber,
     contentLength: content?.length,
     clarifyingQuestions: clarifyingQuestions.length,
     hasDraft: !!draft,
+    hasPdf: !!pdfBase64,
   });
 
   return {
     content,
     status,
     documentType,
+    documentNumber,
     bindingWarning,
     clarifyingQuestions,
     draft,
+    pdfBase64,
   };
 };

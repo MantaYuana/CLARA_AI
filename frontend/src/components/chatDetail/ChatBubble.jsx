@@ -254,21 +254,75 @@ const ClarifyingQuestionsList = ({ questions }) => {
   );
 };
 
-/** Draft mode — final contract draft in scrollable code block */
-const DraftContent = ({ draft }) => {
+/** Strip common markdown symbols so draft text looks like plain document text */
+const stripMarkdown = (text) => {
+  if (!text) return "";
+  return (
+    text
+      // Remove bold/italic: **text** or *text*
+      .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
+      // Remove heading hashes: ## Title → Title
+      .replace(/^#{1,6}\s+/gm, "")
+      // Remove horizontal rules
+      .replace(/^-{3,}\s*$/gm, "────────────────────────────")
+      // Remove remaining lone asterisks/underscores at line boundaries
+      .replace(/^\s*[\*\-]\s/gm, "  • ")
+      .trim()
+  );
+};
+
+/** Open base64 PDF in a new browser tab */
+const openPdf = (base64) => {
+  try {
+    const byteString = atob(base64);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+      bytes[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e) {
+    console.error("[ChatBubble] Failed to open PDF:", e);
+  }
+};
+
+/** Draft mode — final contract draft as plain text with optional PDF button */
+const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
   if (!draft) return null;
+  const plainText = stripMarkdown(draft);
+
   return (
     <div className="mt-1 pt-3 border-t border-border/60">
-      <div className="flex items-center gap-1.5 mb-2">
-        <HiOutlineDocumentDuplicate className="text-primary text-sm" />
-        <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
-          Draft Kontrak
-        </p>
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <HiOutlineDocumentDuplicate className="text-primary text-sm" />
+          <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
+            Draft Kontrak{documentNumber ? ` · ${documentNumber}` : ""}
+          </p>
+        </div>
+
+        {/* PDF preview button */}
+        {pdfBase64 && (
+          <button
+            onClick={() => openPdf(pdfBase64)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                       bg-primary/20 hover:bg-primary/30 border border-primary/40
+                       text-primary text-xs font-medium
+                       transition-all duration-150 active:scale-95"
+          >
+            <HiOutlineExternalLink className="text-sm" />
+            Lihat PDF
+          </button>
+        )}
       </div>
-      <div className="rounded-xl bg-backgroundBlack/80 border border-border/60 p-3 max-h-[400px] overflow-y-auto">
-        <pre className="text-xs text-textSecondary font-mono whitespace-pre-wrap leading-relaxed">
-          {draft}
-        </pre>
+
+      {/* Draft plain text */}
+      <div className="rounded-xl bg-backgroundBlack/60 border border-border/60 p-4 max-h-[420px] overflow-y-auto">
+        <p className="text-sm text-textSecondary leading-relaxed whitespace-pre-wrap font-sans">
+          {plainText}
+        </p>
       </div>
     </div>
   );
@@ -338,9 +392,11 @@ const mdComponents = {
  *   label              'aman' | 'berbahaya' (review mode)
  *   status             'needs_clarification' | 'draft_ready' (draft mode)
  *   documentType       contract type string (draft mode)
+ *   documentNumber     document reference number (draft mode)
  *   bindingWarning     boolean (draft mode)
  *   clarifyingQuestions string[] (draft mode)
  *   draft              string — final draft text (draft mode)
+ *   pdfBase64          string — base64 PDF for preview (draft mode)
  */
 const ChatBubble = ({ message, user }) => {
   const isUser = message.role === "user";
@@ -430,7 +486,11 @@ const ChatBubble = ({ message, user }) => {
           <ClarifyingQuestionsList questions={message.clarifyingQuestions} />
 
           {/* Draft mode: final draft */}
-          <DraftContent draft={message.draft} />
+          <DraftContent
+            draft={message.draft}
+            pdfBase64={message.pdfBase64}
+            documentNumber={message.documentNumber}
+          />
 
           {/* Confidence score bar (query & review modes) */}
           {message.confidenceScore !== null &&

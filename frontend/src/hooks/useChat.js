@@ -143,9 +143,11 @@ const useChat = () => {
           content,
           status,
           documentType,
+          documentNumber,
           bindingWarning,
           clarifyingQuestions,
           draft,
+          pdfBase64,
         } = await drafterChat({
           session_id: draftSessionId,
           message: message.trim(),
@@ -155,9 +157,11 @@ const useChat = () => {
         addMessage("assistant", content, {
           status: status ?? null,
           documentType: documentType ?? null,
+          documentNumber: documentNumber ?? null,
           bindingWarning: bindingWarning ?? false,
           clarifyingQuestions: clarifyingQuestions ?? [],
           draft: draft ?? null,
+          pdfBase64: pdfBase64 ?? null,
         });
       } else {
         // ── Query mode (default) ───────────────────────────────────────────
