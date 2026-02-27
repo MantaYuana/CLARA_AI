@@ -5,11 +5,14 @@ import { useEffect, useState } from "react";
 import SettingsDropdown from "../ui/SettingsDropdown";
 import UserAvatar from "../ui/UserAvatar";
 import { DUMMY_USER } from "../../constants/dummyUser";
+import { useAuth } from "../../hooks/useAuth";
 
 const Navbar = () => {
   const location = useLocation();
   const [isDark, setIsDark] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user, loading } = useAuth();
+  console.log("Navbar user:", user);
 
   // Theme init
   useEffect(() => {
@@ -101,7 +104,20 @@ const Navbar = () => {
         </button>
 
         <SettingsDropdown />
-        <UserAvatar user={DUMMY_USER} />
+        {!loading &&
+          (user ? (
+            <UserAvatar user={user} />
+          ) : (
+            <Link
+              to="/auth"
+              className="ml-2 px-4 py-2 rounded-lg text-sm font-medium
+                   bg-primary text-white
+                   hover:bg-primary/90
+                   transition-all duration-200"
+            >
+              Login
+            </Link>
+          ))}
       </div>
     </nav>
   );

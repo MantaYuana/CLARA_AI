@@ -15,7 +15,14 @@ const UserAvatar = ({ user, onSignOut }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  const initials = user.name
+  // 🛡 Guard clause
+  if (!user) return null;
+
+  const name = user.name || "User";
+  const email = user.email || "";
+  const photoURL = user.photoURL || user.photoUrl || null;
+
+  const initials = name
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -41,10 +48,10 @@ const UserAvatar = ({ user, onSignOut }) => {
                    transition-all duration-200 shrink-0"
         aria-label="Open user menu"
       >
-        {user.photoURL ? (
+        {photoURL ? (
           <img
-            src={user.photoURL}
-            alt={user.name}
+            src={photoURL}
+            alt={name}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -68,7 +75,7 @@ const UserAvatar = ({ user, onSignOut }) => {
           {/* Header — email + close */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
             <span className="dark:text-textSecondary text-xs truncate">
-              {user.email}
+              {email}
             </span>
             <button
               onClick={() => setOpen(false)}
@@ -88,15 +95,15 @@ const UserAvatar = ({ user, onSignOut }) => {
                          text-2xl font-bold
                          ring-4 ring-offset-2 dark:ring-offset-surface ring-primary/60"
               style={{
-                background: user.photoURL
+                background: photoURL
                   ? undefined
                   : "linear-gradient(135deg, #f0a4fe, #bb11ee)",
               }}
             >
-              {user.photoURL ? (
+              {photoURL ? (
                 <img
-                  src={user.photoURL}
-                  alt={user.name}
+                  src={photoURL}
+                  alt={name}
                   className="w-full h-full rounded-full object-cover shrink-0"
                 />
               ) : (
@@ -107,9 +114,11 @@ const UserAvatar = ({ user, onSignOut }) => {
             {/* Greeting */}
             <div className="text-center">
               <p className="dark:text-textPrimary font-semibold text-base">
-                Hi, {user.name.split(" ")[0]}!
+                Hi, {name.split(" ")[0]}!
               </p>
-              <p className="dark:text-textSecondary text-xs mt-0.5">{user.email}</p>
+              <p className="dark:text-textSecondary text-xs mt-0.5">
+                {email}
+              </p>
             </div>
 
             {/* Manage account button */}
