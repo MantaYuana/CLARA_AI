@@ -26,9 +26,11 @@ const SourcesPanel = ({
   onProcessFiles,
   onToggleSelect,
   onRemoveSource,
+  activeMode,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const isDraftMode = activeMode === "draft";
 
   const [recentlyReadyIds, setRecentlyReadyIds] = useState([]);
   const prevSourcesRef = useRef(sources);
@@ -137,15 +139,34 @@ const SourcesPanel = ({
           <div className="flex flex-col flex-1 gap-3 p-3 overflow-y-auto">
             {/* Upload button */}
             <button
-              onClick={() => setModalOpen(true)}
-              className="flex items-center cursor-pointer justify-center gap-2 w-full py-2.5 rounded-xl
-                         border border-dashed border-border dark:text-textSecondary text-sm
-                         hover:border-primary/50 hover:text-primary hover:bg-primary/5
-                         transition-all duration-200"
+              onClick={() => !isDraftMode && setModalOpen(true)}
+              disabled={isDraftMode}
+              title={
+                isDraftMode
+                  ? "Upload tidak tersedia di mode Create Contract"
+                  : undefined
+              }
+              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
+                         border border-dashed text-sm
+                         transition-all duration-200
+                         ${
+                           isDraftMode
+                             ? "border-border/30 text-textSecondary/30 cursor-not-allowed opacity-50"
+                             : "border-border cursor-pointer dark:text-textSecondary hover:border-primary/50 hover:text-primary hover:bg-primary/5"
+                         }`}
             >
               <HiOutlineCloudArrowUp className="text-base" />
               Upload File
             </button>
+
+            {/* Draft mode: disabled overlay message */}
+            {isDraftMode && (
+              <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                <p className="text-[11px] text-yellow-400/80 text-center leading-snug">
+                  File tidak dapat dipilih saat mode Create Contract aktif.
+                </p>
+              </div>
+            )}
 
             {/* File list */}
             {sources.length === 0 ? (
@@ -157,17 +178,22 @@ const SourcesPanel = ({
                 {sources.map((s) => (
                   <li
                     key={s.id}
-                    onClick={() => s.status === "ready" && onToggleSelect(s.id)}
+                    onClick={() =>
+                      !isDraftMode &&
+                      s.status === "ready" &&
+                      onToggleSelect(s.id)
+                    }
                     className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg
-                                transition-all duration-150 cursor-pointer
+                                transition-all duration-150
                                 ${
-                                  s.selected
-                                    ? "bg-primary/15 border border-primary/30"
-                                    : "dark:hover:bg-surface hover:bg-gray-200 border-surface border"
+                                  isDraftMode
+                                    ? "opacity-40 cursor-not-allowed"
+                                    : s.selected
+                                      ? "bg-primary/15 border border-primary/30 cursor-pointer"
+                                      : "dark:hover:bg-surface hover:bg-gray-200 border-surface border cursor-pointer"
                                 }
-                                ${s.status !== "ready" ? "cursor-default" : ""}`}
+                                ${!isDraftMode && s.status !== "ready" ? "cursor-default" : ""}`}
                   >
-                    {/* Menggunakan fungsi render icon yang baru */}
                     {renderStatusIcon(s)}
 
                     {/* File name */}
@@ -178,7 +204,7 @@ const SourcesPanel = ({
                         </div>
                         <p
                           className={`text-xs font-medium truncate ${
-                            s.selected
+                            s.selected && !isDraftMode
                               ? "text-primary"
                               : "dark:text-textPrimary text-gray-800"
                           }`}
@@ -193,8 +219,8 @@ const SourcesPanel = ({
                       )}
                     </div>
 
-                    {/* Remove button */}
-                    {s.status !== "analyzing" && (
+                    {/* Remove button — hidden in draft mode */}
+                    {s.status !== "analyzing" && !isDraftMode && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
