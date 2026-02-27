@@ -11,8 +11,6 @@ import {
   HiArrowUpTray,
 } from "react-icons/hi2";
 
-const MAX_FILES = 5;
-
 const formatBytes = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -29,12 +27,11 @@ const fileSchema = yup.object({
  * UploadModal — file upload modal with drag & drop.
  *
  * Props:
- *  @param {boolean}  isOpen       — controls visibility
- *  @param {Function} onClose      — close handler
- *  @param {Function} onUpload     — (FileList) => void called after validation
- *  @param {number}   currentCount — existing source count (for max check)
+ *  @param {boolean}  isOpen   — controls visibility
+ *  @param {Function} onClose  — close handler
+ *  @param {Function} onUpload — (File[]) => void called after validation
  */
-const UploadModal = ({ isOpen, onClose, onUpload, currentCount = 0 }) => {
+const UploadModal = ({ isOpen, onClose, onUpload }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [staged, setStaged] = useState([]); // files staged for upload review
   const fileInputRef = useRef(null);
@@ -48,22 +45,17 @@ const UploadModal = ({ isOpen, onClose, onUpload, currentCount = 0 }) => {
     resolver: yupResolver(fileSchema),
   });
 
-  const remaining = MAX_FILES - currentCount;
-
   const stageFiles = (fileList) => {
-    const arr = Array.from(fileList).slice(0, remaining);
+    const arr = Array.from(fileList);
     setStaged(arr);
     setValue("files", arr);
   };
 
-  const handleDrop = useCallback(
-    (e) => {
-      e.preventDefault();
-      setIsDragging(false);
-      stageFiles(e.dataTransfer.files);
-    },
-    [remaining],
-  );
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    stageFiles(e.dataTransfer.files);
+  }, []);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -148,7 +140,7 @@ const UploadModal = ({ isOpen, onClose, onUpload, currentCount = 0 }) => {
                 </span>
               </p>
               <p className="text-textSecondary/60 text-xs mt-2">
-                PDF, DOCX — maks. {MAX_FILES} file, 10MB/file
+                PDF, DOCX — 10MB/file, upload tidak terbatas
               </p>
             </div>
 
@@ -190,11 +182,6 @@ const UploadModal = ({ isOpen, onClose, onUpload, currentCount = 0 }) => {
               ))}
             </ul>
           )}
-
-          {/* Capacity info */}
-          <p className="text-textSecondary text-xs text-center">
-            Tersisa {remaining - staged.length} slot dari {MAX_FILES} file
-          </p>
 
           {/* Error from yup */}
           {errors.files && (

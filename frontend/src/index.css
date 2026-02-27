@@ -48,3 +48,30 @@
   );
   pointer-events: none;
 }
+
+/* 1. Untuk Browser berbasis Webkit (Chrome, Safari, Edge, Opera) */
+::-webkit-scrollbar {
+  width: 8px; /* Lebar scrollbar vertikal */
+  height: 8px; /* Tinggi scrollbar horizontal */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Membuat area 'jalan' scrollbar tidak terlihat */
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1); /* Warna thumb tipis & transparan */
+  border-radius: 10px; /* Membuat sudut membulat */
+  border: 2px solid transparent; /* Memberi jarak halus */
+  background-clip: content-box; /* Agar border transparan berfungsi sebagai padding */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3); /* Lebih terang saat disentuh kursor */
+}
+
+/* 2. Untuk Firefox (Menggunakan properti standar) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}

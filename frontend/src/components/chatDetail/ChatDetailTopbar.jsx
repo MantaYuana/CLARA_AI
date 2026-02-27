@@ -12,7 +12,7 @@ const ChatDetailTopbar = ({ projectTitle = "Untitled Project" }) => {
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 bg-backgroundBlack border-b border-border shrink-0 z-40">
+    <header className="flex items-center justify-between px-6 md:px-10 py-3 bg-backgroundBlack border-b border-border shrink-0 z-40">
       {/* Left — Logo */}
       <Link to="/">
         <span className="text-xl font-semibold tracking-tight bg-linear-to-b from-secondary to-primary bg-clip-text text-transparent">

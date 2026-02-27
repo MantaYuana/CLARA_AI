@@ -14,7 +14,7 @@ const ChatBubble = ({ message }) => {
 
   if (isUser) {
     return (
-      <div className="flex justify-end px-4">
+      <div className="flex justify-end px-4 max-w-full">
         <div className="flex items-end gap-2 max-w-[75%]">
           <div
             className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed
