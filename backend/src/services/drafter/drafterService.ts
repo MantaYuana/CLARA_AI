@@ -164,7 +164,7 @@ Kembalikan JSON. Gunakan null untuk field yang belum diketahui.`;
   }
 }
 
-// ── Step 3: Confidence-based completeness assessment ───────────────────────────
+// Step 3: Confidence - based completeness assessment  
 
 function assessCompleteness(
   fields: ExtractedFields,
@@ -186,7 +186,7 @@ function assessCompleteness(
   };
 }
 
-// ── Step 4: Generate a single proactive question ────────────────────────────────
+// Step 4: Generate a single proactive question   
 
 async function generateProactiveQuestion(
   _fields: ExtractedFields,
@@ -231,7 +231,7 @@ JANGAN bertanya lebih dari satu hal sekaligus. Gunakan Bahasa Indonesia.`;
   }
 }
 
-// ── Step 4a: Persist DrafterSession in Neo4j ───────────────────────────────────
+// Step 4a: Persist DrafterSession in Neo4j   ───
 
 async function persistDrafterSession(
   sessionId: string,
@@ -263,7 +263,7 @@ async function persistDrafterSession(
   }
 }
 
-// ── Step 5: Fetch clause templates from Neo4j ─────────────────────────────────
+// Step 5: Fetch clause templates from Neo4j   ─
 
 
 interface ClauseTemplate {

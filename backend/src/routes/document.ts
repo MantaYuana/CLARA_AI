@@ -50,7 +50,7 @@ const upload = multer({
     },
 });
 
-// ── Clause storage helper ─────────────────────────────────────────────────────
+// Clause storage helper       
 
 async function storeClauses(
     documentId: string,
@@ -94,7 +94,7 @@ async function storeClauses(
     }
 }
 
-// ── Route ─────────────────────────────────────────────────────────────────────
+// Route
 
 /**
  * POST /api/v1/document/analyze

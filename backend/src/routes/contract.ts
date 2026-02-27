@@ -88,7 +88,7 @@ router.post(
         "Analisis kontrak ini dan temukan klausula yang berpotensi merugikan.";
       const documentId = uuidv4();
 
-      // ── Extract text ──────────────────────────────────────────────────────
+      // Extract text
       if (req.file) {
         const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
         contractText = ocrResult.raw_text;
@@ -127,7 +127,7 @@ router.post(
         return;
       }
 
-      // ── Text-only path ────────────────────────────────────────────────────
+      // Text - only path
       const parsed = TextBodySchema.safeParse(req.body);
       if (!parsed.success || (!parsed.data.text && !req.file)) {
         res
