@@ -24,12 +24,25 @@ const ChatDetail = () => {
     useChat();
 
   const handleSend = (message) => {
-    // Pass real documentIds returned from the analyze endpoint
-    // chatService uses the first one as document_id for the query
-    const selectedSourceIds = sources
-      .filter((s) => s.selected && s.status === "ready" && s.documentId)
+    const selectedSources = sources.filter(
+      (s) => s.selected && s.status === "ready",
+    );
+
+    // For review mode — pass the actual File object (endpoint requires the file directly)
+    const selectedFile =
+      selectedSources.length > 0 ? selectedSources[0].file : null;
+
+    // For query mode — pass real documentIds from analyze response
+    const selectedSourceIds = selectedSources
+      .filter((s) => s.documentId)
       .map((s) => s.documentId);
-    sendChatMessage({ message, selectedSourceIds, mode: activeMode });
+
+    sendChatMessage({
+      message,
+      selectedSourceIds,
+      selectedFile,
+      mode: activeMode,
+    });
   };
 
   return (
@@ -93,6 +106,7 @@ const ChatDetail = () => {
             isLoading={isLoading}
             onSend={handleSend}
             selectedCount={selectedCount}
+            activeMode={activeMode}
           />
         </div>
 

@@ -11,7 +11,13 @@ import ChatInput from "./ChatInput";
  *  @param {Function} onSend        — (message: string) => void
  *  @param {number}   selectedCount — passed to ChatInput for sources badge
  */
-const ChatPanel = ({ messages, isLoading, onSend, selectedCount }) => {
+const ChatPanel = ({
+  messages,
+  isLoading,
+  onSend,
+  selectedCount,
+  activeMode,
+}) => {
   const bottomRef = useRef(null);
 
   // Auto-scroll to bottom on new messages
@@ -40,6 +46,7 @@ const ChatPanel = ({ messages, isLoading, onSend, selectedCount }) => {
         onSend={onSend}
         isLoading={isLoading}
         selectedCount={selectedCount}
+        activeMode={activeMode}
       />
     </div>
   );

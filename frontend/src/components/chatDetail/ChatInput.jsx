@@ -19,9 +19,10 @@ const schema = yup.object({
  * Props:
  *  @param {Function} onSend        — (message: string) => void
  *  @param {boolean}  isLoading     — disables input while AI is responding
- *  @param {number}   selectedCount — number of selected sources to display
+ *  @param {number}   selectedCount — number of selected sources
+ *  @param {string|null} activeMode — current mode ('review' | 'draft' | null)
  */
-const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
+const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
   const {
     register,
     handleSubmit,
@@ -72,7 +73,11 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
             textareaRef.current = el;
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Start typing..."
+          placeholder={
+            activeMode === "review"
+              ? "Ask your contract review question..."
+              : "Start typing..."
+          }
           rows={1}
           disabled={isLoading}
           className="flex-1   bg-transparent text-textPrimary text-sm placeholder-textSecondary
@@ -102,6 +107,18 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0 }) => {
           <HiPaperAirplane className="text-base" />
         </button>
       </form>
+
+      {/* Review mode hint */}
+      {activeMode === "review" && selectedCount === 0 && (
+        <p className="text-center text-xs text-yellow-400/70 mt-1.5">
+          ⚠️ Review mode: select one file from Sources panel first.
+        </p>
+      )}
+      {activeMode === "review" && selectedCount > 0 && (
+        <p className="text-center text-xs text-green-400/70 mt-1.5">
+          ✓ {selectedCount} file selected — ready for contract review.
+        </p>
+      )}
 
       {/* Disclaimer */}
       <p className="text-center text-xs text-textSecondary/50 mt-2">

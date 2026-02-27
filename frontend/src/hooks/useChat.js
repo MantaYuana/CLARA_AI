@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { sendMessage } from "../Services/chatService";
+import { reviewContract } from "../Services/reviewService";
+import toast from "react-hot-toast";
 
 const INITIAL_MESSAGE = {
   id: "init",
@@ -12,64 +14,101 @@ const INITIAL_MESSAGE = {
 /**
  * useChat — manages chat messages and active mode.
  *
- * Returns:
- *  messages        : chat message array
- *  activeMode      : 'review' | 'draft' | null
- *  setActiveMode   : setter
- *  isLoading       : boolean
- *  sendChatMessage : async ({ message, selectedSourceIds, mode }) => void
+ * Routing logic:
+ *  - mode === 'review' → calls reviewContract (POST /contract/review)
+ *                        requires: selectedFile (File object) + message (question)
+ *  - any other mode   → calls sendMessage (POST /query)
+ *                        requires: message + optional selectedSourceIds
+ *
+ * sendChatMessage param:
+ *  { message: string, selectedSourceIds: string[], selectedFile: File|null, mode: string|null }
  */
 const useChat = () => {
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [activeMode, setActiveMode] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendChatMessage = async ({ message, selectedSourceIds = [], mode }) => {
-    // Add user message immediately (optimistic)
-    const userMsg = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content: message,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+  const addMessage = (role, content, extras = {}) =>
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `${role[0]}-${Date.now()}`,
+        role,
+        content,
+        timestamp: new Date().toISOString(),
+        ...extras,
+      },
+    ]);
+
+  const sendChatMessage = async ({
+    message,
+    selectedSourceIds = [],
+    selectedFile = null,
+    mode,
+  }) => {
+    // ── Validation: Review mode requires exactly one file ──────────────────
+    if (mode === "review") {
+      if (!selectedFile) {
+        toast.error(
+          "Review mode: pilih satu file terlebih dahulu dari panel Sources.",
+        );
+        return;
+      }
+      if (!message?.trim()) {
+        toast.error("Review mode: tuliskan pertanyaan review terlebih dahulu.");
+        return;
+      }
+    }
+
+    // Optimistically add user message
+    addMessage("user", message.trim());
     setIsLoading(true);
 
     try {
-      const { content } = await sendMessage({
-        message,
-        fileIds: selectedSourceIds, // first id used as document_id in chatService
-        mode,
-      });
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `a-${Date.now()}`,
-          role: "assistant",
+      if (mode === "review") {
+        // ── Review Contract mode ───────────────────────────────────────────
+        const {
           content,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+          confidenceScore,
+          citations,
+          label,
+          clauses,
+          rationale,
+        } = await reviewContract({
+          file: selectedFile,
+          question: message.trim(),
+        });
+
+        addMessage("assistant", content, {
+          confidenceScore: confidenceScore ?? null,
+          citations: citations ?? [],
+          label: label ?? null,
+          clauses: clauses ?? [],
+          rationale: rationale ?? null,
+        });
+      } else {
+        // ── Query mode (default) ───────────────────────────────────────────
+        const { content, confidenceScore, citations } = await sendMessage({
+          message,
+          fileIds: selectedSourceIds,
+          mode,
+        });
+
+        addMessage("assistant", content, {
+          confidenceScore: confidenceScore ?? null,
+          citations: citations ?? [],
+        });
+      }
     } catch (err) {
-      console.error(
-        "[useChat] Query error:",
-        err?.response?.data ?? err.message,
-      );
+      console.error("[useChat] Error:", err?.response?.data ?? err.message);
       const errMsg =
         err?.response?.status === 401
           ? "Sesi tidak valid. Silakan login kembali."
           : err?.response?.status === 400
-            ? "Permintaan tidak valid. Coba lagi."
+            ? "Permintaan tidak valid. Pastikan file dan pertanyaan sudah benar."
             : "Maaf, terjadi kesalahan saat menghubungi server. Silakan coba lagi.";
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `err-${Date.now()}`,
-          role: "assistant",
-          content: errMsg,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+
+      addMessage("assistant", errMsg);
     } finally {
       setIsLoading(false);
     }
