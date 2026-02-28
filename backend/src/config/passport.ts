@@ -15,7 +15,7 @@ import { upsertUser } from "../services/user/userService";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? process.env.OAUTH_GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? process.env.OAUTH_GOOGLE_CLIENT_SECRET ?? "";
 const JWT_SECRET = process.env.JWT_SECRET ?? "change_me_in_production";
-const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+const BACKEND_URL = "https://claraai.my.id";
 
 passport.use(
     new GoogleStrategy(
@@ -54,4 +54,4 @@ passport.use(
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj as Express.User));
 
-export { passport as configuredPassport, FRONTEND_URL };
+export { passport as configuredPassport, BACKEND_URL };
