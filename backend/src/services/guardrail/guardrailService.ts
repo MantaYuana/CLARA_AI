@@ -46,10 +46,10 @@ const KEYWORD_RULES: KeywordRule[] = [
       /penyitaan\s+paksa|sita\s+jaminan\s+paksa|rampas\s+aset|klausula\s+penyitaan/i,
     severity: "CRITICAL",
     message:
-      "Kontrak mengandung klausula penyitaan paksa yang melanggar putusan Mahkamah Konstitusi.",
+      "Contract contains a forced seizure clause that violates Constitutional Court rulings.",
     advice:
-      "Minta penghapusan klausula penyitaan paksa ini. Penyitaan hanya sah melalui putusan pengadilan (MK No. 18/PUU-XVII/2019).",
-    legal_basis: "Putusan MK No. 18/PUU-XVII/2019",
+      "Request the removal of this forced seizure clause. Seizures are only legal through a court decision (MK No. 18/PUU-XVII/2019).",
+    legal_basis: "Constitutional Court Decision No. 18/PUU-XVII/2019",
   },
   {
     name: "unilateral_termination",
@@ -57,10 +57,10 @@ const KEYWORD_RULES: KeywordRule[] = [
       /mengakhiri\s+(?:perjanjian|kontrak|kerja\s+sama)\s+secara\s+sepihak|pengakhiran\s+sepihak/i,
     severity: "WARNING",
     message:
-      "Kontrak mengandung klausula pengakhiran sepihak yang sulit diberlakukan tanpa putusan pengadilan.",
+      "Contract contains a unilateral termination clause which is difficult to enforce without a court ruling.",
     advice:
-      "Berdasarkan Pasal 1266 KUHPerdata, pembatalan perjanjian bilateral memerlukan penetapan pengadilan kecuali disepakati lain secara eksplisit. Pertimbangkan klausula penyelesaian sengketa melalui mediasi terlebih dahulu.",
-    legal_basis: "Pasal 1266 KUHPerdata",
+      "Under Article 1266 of the Civil Code, cancellation of bilateral agreements requires a court order unless explicitly agreed otherwise. Consider a dispute resolution clause via mediation first.",
+    legal_basis: "Article 1266 of the Civil Code",
   },
   {
     name: "excessive_liquidated_damages",
@@ -68,10 +68,10 @@ const KEYWORD_RULES: KeywordRule[] = [
       /ganti\s+rugi\s+sebesar\s+[3-9]\d{2,}%|denda\s+[3-9]\d{2,}%|penalti\s+[3-9]\d{2,}%/i,
     severity: "CRITICAL",
     message:
-      "Klausula ganti rugi melebihi batas kelaziman (>300%) yang dapat dikualifikasikan sebagai perjanjian tidak adil.",
+      "Liquidated damages clause exceeds customary limits (>300%) and may be qualified as an unfair agreement.",
     advice:
-      "Negosiasikan denda maksimal 5% per bulan sesuai batas wajar OJK. Klausula denda yang berlebihan dapat dibatalkan pengadilan.",
-    legal_basis: "Regulasi OJK & Pasal 1267 KUHPerdata",
+      "Negotiate a maximum penalty of 5% per month according to OJK reasonable limits. Excessive penalty clauses can be annulled by the court.",
+    legal_basis: "OJK Regulations & Article 1267 of the Civil Code",
   },
   {
     name: "waiver_of_rights",
@@ -79,19 +79,19 @@ const KEYWORD_RULES: KeywordRule[] = [
       /melepaskan\s+hak|mengesampingkan\s+hak|tidak\s+menuntut(?:\s+ganti\s+rugi)?|melepas\s+(?:semua\s+)?hak(?:\s+hukum)?/i,
     severity: "WARNING",
     message:
-      "Kontrak mengandung klausula pelepasan hak yang dapat membatasi perlindungan hukum pihak yang lebih lemah.",
+      "Contract contains a waiver of rights clause that may limit the legal protection of the weaker party.",
     advice:
-      "Klausula pelepasan hak yang diperoleh melalui tekanan, penipuan, atau kekhilafan dapat dibatalkan (Pasal 1321 KUHPerdata). Pastikan klausula ini tidak melepaskan hak-hak minimum yang dilindungi undang-undang.",
-    legal_basis: "Pasal 1321 KUHPerdata",
+      "A waiver of rights obtained through pressure, fraud, or mistake can be annulled (Article 1321 of the Civil Code). Ensure this clause does not waive minimum rights protected by law.",
+    legal_basis: "Article 1321 of the Civil Code",
   },
   {
     name: "no_dispute_resolution",
     pattern: /^(?!.*(?:pengadilan|arbitrase|mediasi|bpsk|sengketa)).*$/is,
     severity: "INFO",
-    message: "Kontrak tidak memiliki klausula penyelesaian sengketa yang eksplisit.",
+    message: "Contract lacks an explicit dispute resolution clause.",
     advice:
-      "Tambahkan klausula penyelesaian sengketa: tahapan musyawarah → mediasi → arbitrase/pengadilan, beserta yurisdiksi yang berlaku.",
-    legal_basis: "Praktik terbaik hukum kontrak Indonesia",
+      "Add a dispute resolution clause: negotiation → mediation → arbitration/court, along with the applicable jurisdiction.",
+    legal_basis: "Indonesian contract law best practices",
   },
 ];
 
@@ -133,12 +133,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
         triggered: exceeded,
         severity: exceeded ? "WARNING" : "INFO",
         message: exceeded
-          ? `Suku bunga ${extracted.interest_percent_per_month}%/bulan melebihi batas OJK (${limits.max_interest}%/bulan).`
-          : `Suku bunga ${extracted.interest_percent_per_month}%/bulan dalam batas wajar.`,
+          ? `Interest rate of ${extracted.interest_percent_per_month}%/month exceeds the OJK limit (${limits.max_interest}%/month).`
+          : `Interest rate of ${extracted.interest_percent_per_month}%/month is within reasonable limits.`,
         advice: exceeded
-          ? `Negosiasikan suku bunga di bawah ${limits.max_interest}%/bulan sesuai regulasi OJK.`
+          ? `Negotiate the interest rate below ${limits.max_interest}%/month according to OJK regulations.`
           : "",
-        legal_basis: "Regulasi OJK Pinjaman",
+        legal_basis: "OJK Lending Regulations",
       });
     }
 
@@ -150,12 +150,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
         triggered: exceeded,
         severity: exceeded ? "WARNING" : "INFO",
         message: exceeded
-          ? `Denda ${extracted.penalty_percent_per_month}%/bulan melebihi batas wajar (${limits.max_penalty}%/bulan).`
-          : `Denda ${extracted.penalty_percent_per_month}%/bulan dalam batas wajar.`,
+          ? `Penalty of ${extracted.penalty_percent_per_month}%/month exceeds the reasonable limit (${limits.max_penalty}%/month).`
+          : `Penalty of ${extracted.penalty_percent_per_month}%/month is within reasonable limits.`,
         advice: exceeded
-          ? `Negosiasikan denda maksimal ${limits.max_penalty}%/bulan. Denda berlebihan dapat dibatalkan pengadilan (Pasal 1267 KUHPerdata).`
+          ? `Negotiate a maximum penalty of ${limits.max_penalty}%/month. Excessive penalties can be annulled by the court (Article 1267 of the Civil Code).`
           : "",
-        legal_basis: "Pasal 1267 KUHPerdata & OJK",
+        legal_basis: "Article 1267 of the Civil Code & OJK",
       });
     }
 
@@ -169,12 +169,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
         triggered: exceeded,
         severity: exceeded ? "WARNING" : "INFO",
         message: exceeded
-          ? `Bunga keterlambatan ${extracted.late_interest_percent_per_day}%/hari melebihi batas wajar OJK (${MAX_LATE_DAY}%/hari).`
-          : `Bunga keterlambatan ${extracted.late_interest_percent_per_day}%/hari dalam batas wajar.`,
+          ? `Late interest of ${extracted.late_interest_percent_per_day}%/day exceeds OJK reasonable limit (${MAX_LATE_DAY}%/day).`
+          : `Late interest of ${extracted.late_interest_percent_per_day}%/day is within reasonable limits.`,
         advice: exceeded
-          ? `Negosiasikan bunga keterlambatan di bawah ${MAX_LATE_DAY}%/hari sesuai panduan OJK.`
+          ? `Negotiate late interest below ${MAX_LATE_DAY}%/day according to OJK guidelines.`
           : "",
-        legal_basis: "Panduan OJK & Pasal 1267 KUHPerdata",
+        legal_basis: "OJK Guidelines & Article 1267 of the Civil Code",
       });
     }
 
@@ -188,12 +188,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
         triggered: exceeded,
         severity: exceeded ? "WARNING" : "INFO",
         message: exceeded
-          ? `Retensi ${extracted.retention_percent}% melebihi standar industri (${MAX_RETENTION}%).`
-          : `Retensi ${extracted.retention_percent}% dalam batas standar industri.`,
+          ? `Retention of ${extracted.retention_percent}% exceeds the industry standard (${MAX_RETENTION}%).`
+          : `Retention of ${extracted.retention_percent}% is within the industry standard limit.`,
         advice: exceeded
-          ? `Negosiasikan retensi maksimal ${MAX_RETENTION}% dari nilai kontrak sesuai standar industri jasa konstruksi.`
+          ? `Negotiate a maximum retention of ${MAX_RETENTION}% of the contract value according to construction industry standards.`
           : "",
-        legal_basis: "Praktik industri & Peraturan Menteri PUPR",
+        legal_basis: "Industry practices & PUPR Ministerial Regulation",
       });
     }
 
@@ -208,12 +208,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
           triggered: true,
           severity: "WARNING",
           message: tooLow
-            ? `Uang muka ${extracted.dp_percent}% di bawah batas minimum yang disarankan (20%), meningkatkan risiko pembatalan sepihak.`
-            : `Uang muka ${extracted.dp_percent}% sangat tinggi (>50%), meningkatkan risiko bagi pembeli.`,
+            ? `Down payment of ${extracted.dp_percent}% is below the recommended minimum limit (20%), increasing the risk of unilateral cancellation.`
+            : `Down payment of ${extracted.dp_percent}% is very high (>50%), increasing the risk for the buyer.`,
           advice: tooLow
-            ? "Negosiasikan uang muka minimal 20-30% untuk melindungi kepentingan penyedia jasa."
-            : "Uang muka di atas 50% berisiko jika vendor gagal menyelesaikan pekerjaan. Pertimbangkan escrow.",
-          legal_basis: "Praktik terbaik hukum kontrak Indonesia",
+            ? "Negotiate a minimum down payment of 20-30% to protect the service provider's interests."
+            : "A down payment above 50% is risky if the vendor fails to complete the work. Consider an escrow.",
+          legal_basis: "Indonesian contract law best practices",
         });
       }
     }
@@ -228,12 +228,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
         triggered: exceeded,
         severity: exceeded ? "WARNING" : "INFO",
         message: exceeded
-          ? `Denda nominal Rp ${extracted.penalty_lump_sum_idr.toLocaleString("id-ID")} perlu dikaji proporsionalitasnya terhadap nilai kontrak.`
-          : `Denda nominal Rp ${extracted.penalty_lump_sum_idr.toLocaleString("id-ID")} terdeteksi.`,
+          ? `Nominal penalty of Rp ${extracted.penalty_lump_sum_idr.toLocaleString("id-ID")} needs its proportionality reviewed against the contract value.`
+          : `Nominal penalty of Rp ${extracted.penalty_lump_sum_idr.toLocaleString("id-ID")} detected.`,
         advice: exceeded
-          ? "Pastikan denda proporsional dengan nilai kontrak dan kerugian aktual. Denda yang tidak proporsional dapat dikurangi pengadilan (Pasal 1267 KUHPerdata)."
+          ? "Ensure the penalty is proportional to the contract value and actual losses. Disproportionate penalties may be reduced by the court (Article 1267 of the Civil Code)."
           : "",
-        legal_basis: "Pasal 1267 KUHPerdata",
+        legal_basis: "Article 1267 of the Civil Code",
       });
     }
 
@@ -245,12 +245,12 @@ async function runNumericChecks(extracted: NumericVariables): Promise<GuardrailC
         triggered: exceeded,
         severity: exceeded ? "CRITICAL" : "INFO",
         message: exceeded
-          ? `Durasi PKWT ${extracted.pkwt_duration_years} tahun melebihi batas maksimal ${limits.max_duration} tahun.`
-          : `Durasi PKWT ${extracted.pkwt_duration_years} tahun sesuai UU Ketenagakerjaan.`,
+          ? `PKWT duration of ${extracted.pkwt_duration_years} years exceeds the maximum limit of ${limits.max_duration} years.`
+          : `PKWT duration of ${extracted.pkwt_duration_years} years complies with the Manpower Law.`,
         advice: exceeded
-          ? `PKWT maksimal ${limits.max_duration} tahun (Pasal 59 UU 13/2003). PKWT melebihi batas otomatis menjadi PKWTT.`
+          ? `Maximum PKWT is ${limits.max_duration} years (Article 59 of Law 13/2003). PKWT exceeding the limit automatically becomes PKWTT.`
           : "",
-        legal_basis: "Pasal 59 UU No. 13 Tahun 2003",
+        legal_basis: "Article 59 of Law No. 13 of 2003",
       });
     }
   } finally {
@@ -276,7 +276,7 @@ export async function runGuardrailChecks(contractText: string): Promise<Guardrai
       severity: rule.severity,
       message: triggered
         ? rule.message
-        : `Tidak ditemukan: ${rule.name.replace(/_/g, " ")}`,
+        : `Not found: ${rule.name.replace(/_/g, " ")}`,
       advice: triggered ? rule.advice : "",
       legal_basis: rule.legal_basis,
     });
@@ -334,7 +334,7 @@ export async function runGuardrailChecksWithVariables(
       severity: rule.severity,
       message: triggered
         ? rule.message
-        : `Tidak ditemukan: ${rule.name.replace(/_/g, " ")}`,
+        : `Not found: ${rule.name.replace(/_/g, " ")}`,
       advice: triggered ? rule.advice : "",
       legal_basis: rule.legal_basis,
     });

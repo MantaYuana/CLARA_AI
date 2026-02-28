@@ -8,8 +8,8 @@ const schema = yup.object({
   message: yup
     .string()
     .trim()
-    .min(1, "Pesan tidak boleh kosong")
-    .max(2000, "Pesan terlalu panjang")
+    .min(1, "Message cannot be empty")
+    .max(2000, "Message is too long")
     .required(),
 });
 
@@ -59,10 +59,10 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
   const canSend = value.trim().length > 0 && !isLoading;
 
   return (
-    <div className="shrink-0 border-t border-primary dark:border-border dark:bg-background px-4 py-3">
+    <div className="shrink-0 border-t border-gray-200 dark:border-border bg-white dark:bg-background px-4 py-3">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex items-center gap-3  dark:bg-surface border border-border rounded-2xl px-4 py-3
+        className="flex items-center gap-3 bg-gray-50 dark:bg-surface border border-gray-200 dark:border-border rounded-2xl px-4 py-3
                    focus-within:border-primary/50 transition-colors duration-200"
       >
         {/* Textarea */}
@@ -77,7 +77,7 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
             activeMode === "review"
               ? "Ask your contract review question..."
               : activeMode === "draft"
-                ? "Bisakah kamu bantu saya membuatkan draft kontrak [JENIS KONTRAK ANDA]"
+                ? "Can you help me draft a contract for [YOUR CONTRACT TYPE]"
                 : "Start typing..."
           }
           rows={1}

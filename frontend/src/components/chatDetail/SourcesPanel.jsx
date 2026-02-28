@@ -6,16 +6,20 @@ import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineXMark,
+  HiOutlineFolder,
+  HiOutlineXCircle,
+  HiOutlineInformationCircle,
 } from "react-icons/hi2";
 import { HiOutlineDocumentText } from "react-icons/hi";
 import UploadModal from "./UploadModal";
+// import { fetchUserDocuments } from "../../Services/documentService";
 
 /**
  * SourcesPanel — left collapsible panel for file management.
  *
  * Props:
- * @param {Array}    sources       — from useSources
- * @param {number}   selectedCount — currently selected source count
+ * @param {Array}    sources        — from useSources
+ * @param {number}   selectedCount  — currently selected source count
  * @param {Function} onProcessFiles — (files) => void
  * @param {Function} onToggleSelect — (id) => void
  * @param {Function} onRemoveSource — (id) => void
@@ -30,10 +34,20 @@ const SourcesPanel = ({
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [guidelinesOpen, setGuidelinesOpen] = useState(false); // State for the Guidelines Popup
   const isDraftMode = activeMode === "draft";
 
   const [recentlyReadyIds, setRecentlyReadyIds] = useState([]);
   const prevSourcesRef = useRef(sources);
+
+  // ── My Documents state ─────────────────────────────────────────────────────
+  // const [userDocuments, setUserDocuments] = useState([]);
+  // const [docsLoading, setDocsLoading] = useState(false);
+  // const [docsError, setDocsError] = useState(null);
+
+  // useEffect(() => {
+  //   const loadDocs = async () => { ... }
+  // }, []);
 
   useEffect(() => {
     const newReadyIds = [];
@@ -89,17 +103,30 @@ const SourcesPanel = ({
     );
   };
 
+  /** Format a date string into a short readable form */
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <>
       <div
-        className={`flex flex-col shadow-md border-primary dark:bg-background border dark:border-border rounded-2xl overflow-hidden
+        className={`flex flex-col shadow-md bg-white dark:bg-background border border-gray-200 dark:border-border rounded-2xl overflow-hidden
                     transition-all duration-300 shrink-0 h-full
                     ${collapsed ? "w-12" : "w-full lg:w-80"}`}
       >
         {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-primary dark:border-border shrink-0">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 dark:border-border shrink-0">
           {!collapsed && (
-            <span className="dark:text-textPrimary text-sm font-semibold">
+            <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
               Upload File
             </span>
           )}
@@ -134,6 +161,12 @@ const SourcesPanel = ({
                 </span>
               </div>
             )}
+            <button
+              className="p-2 rounded-lg text-black dark:text-textSecondary hover:text-primary hover:bg-surface transition-colors"
+              title="My Documents"
+            >
+              <HiOutlineFolder className="text-xl" />
+            </button>
           </div>
         ) : (
           <div className="flex flex-col flex-1 gap-3 p-3 overflow-y-auto">
@@ -143,17 +176,17 @@ const SourcesPanel = ({
               disabled={isDraftMode}
               title={
                 isDraftMode
-                  ? "Upload tidak tersedia di mode Create Contract"
+                  ? "Upload not available in Create Contract mode"
                   : undefined
               }
               className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                         border border-dashed text-sm
-                         transition-all duration-200
-                         ${
-                           isDraftMode
-                             ? "border-border/30 text-textSecondary/30 cursor-not-allowed opacity-50"
-                             : "border-border cursor-pointer dark:text-textSecondary hover:border-primary/50 hover:text-primary hover:bg-primary/5"
-                         }`}
+                          border border-dashed text-sm
+                          transition-all duration-200
+                          ${
+                            isDraftMode
+                              ? "border-border/30 text-textSecondary/30 cursor-not-allowed opacity-50"
+                              : "border-border cursor-pointer dark:text-textSecondary hover:border-primary/50 hover:text-primary hover:bg-primary/5"
+                          }`}
             >
               <HiOutlineCloudArrowUp className="text-base" />
               Upload File
@@ -163,16 +196,25 @@ const SourcesPanel = ({
             {isDraftMode && (
               <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
                 <p className="text-[11px] text-yellow-400/80 text-center leading-snug">
-                  File tidak dapat dipilih saat mode Create Contract aktif.
+                  Files cannot be selected while Create Contract mode is active.
                 </p>
               </div>
             )}
 
-            {/* File list */}
+            {/* File list & Empty State */}
             {sources.length === 0 ? (
-              <p className="text-textSecondary text-xs text-center mt-4">
-                Belum ada file. Upload kontrak untuk mulai.
-              </p>
+              <div className="flex flex-col items-center mt-6 px-2 text-center">
+                <p className="text-textSecondary text-xs mb-3">
+                  No files yet. Upload a contract to get started.
+                </p>
+                <button
+                  onClick={() => setGuidelinesOpen(true)}
+                  className="flex cursor-pointer items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-xs font-medium transition-colors"
+                >
+                  <HiOutlineInformationCircle className="text-sm" />
+                  What files does Clara accept?
+                </button>
+              </div>
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {sources.map((s) => (
@@ -235,6 +277,9 @@ const SourcesPanel = ({
                 ))}
               </ul>
             )}
+
+            {/* ── My Documents Section (Commented Out) ──────────────── */}
+            {/* ... */}
           </div>
         )}
       </div>
@@ -245,6 +290,98 @@ const SourcesPanel = ({
         onClose={() => setModalOpen(false)}
         onUpload={(files) => onProcessFiles(files)}
       />
+
+      {/* ── File Guidelines Modal ─────────────────────────────────────── */}
+      {guidelinesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-background border border-gray-200 dark:border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col scale-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-border bg-gray-50 dark:bg-surfaceLight">
+              <h3 className="font-semibold text-gray-900 dark:text-textPrimary flex items-center gap-2">
+                <HiOutlineInformationCircle className="text-primary text-xl" />
+                Upload Guidelines
+              </h3>
+              <button
+                onClick={() => setGuidelinesOpen(false)}
+                className="text-gray-500 hover:text-gray-800 dark:text-textSecondary dark:hover:text-textPrimary transition-colors p-1"
+              >
+                <HiOutlineXMark className="text-xl" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-5 flex flex-col gap-6">
+              <p className="text-sm text-gray-600 dark:text-textSecondary leading-relaxed">
+                To ensure Clara provides the most accurate analysis and
+                insights, please make sure your documents meet the following
+                criteria:
+              </p>
+
+              <div className="flex flex-col gap-4">
+                {/* Do's */}
+                <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 rounded-xl">
+                  <h4 className="text-sm font-semibold text-green-800 dark:text-green-400 mb-3 flex items-center gap-2">
+                    <HiOutlineCheckCircle className="text-lg" />
+                    Supported & Recommended
+                  </h4>
+                  <ul className="text-sm text-green-700 dark:text-green-300/80 space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-green-500 rounded-full shrink-0" />
+                      PDF files (.pdf) with standard text.
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-green-500 rounded-full shrink-0" />
+                      Clear, machine-readable text (native digital PDFs or
+                      high-quality OCR).
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-green-500 rounded-full shrink-0" />
+                      Standard legal contracts, agreements, or clauses.
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Don'ts */}
+                <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl">
+                  <h4 className="text-sm font-semibold text-red-800 dark:text-red-400 mb-3 flex items-center gap-2">
+                    <HiOutlineXCircle className="text-lg" />
+                    Not Supported
+                  </h4>
+                  <ul className="text-sm text-red-700 dark:text-red-300/80 space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                      Handwritten documents or signatures.
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                      Photographs of physical papers (e.g., from a phone
+                      camera).
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                      Blurry, skewed, or poorly scanned documents.
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1 w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                      Password-protected or encrypted PDFs.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-4 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-surfaceLight flex justify-end">
+              <button
+                onClick={() => setGuidelinesOpen(false)}
+                className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

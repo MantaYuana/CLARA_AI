@@ -90,12 +90,12 @@ const useChat = () => {
     if (mode === "review") {
       if (!selectedFile) {
         toast.error(
-          "Review mode: pilih satu file terlebih dahulu dari panel Sources.",
+          "Review mode: please select one file from the Sources panel first.",
         );
         return;
       }
       if (!message?.trim()) {
-        toast.error("Review mode: tuliskan pertanyaan review terlebih dahulu.");
+        toast.error("Review mode: please type your review question first.");
         return;
       }
     }
@@ -103,11 +103,13 @@ const useChat = () => {
     // ── Validation: Draft mode requires message ────────────────────────────
     if (mode === "draft") {
       if (!message?.trim()) {
-        toast.error("Draft mode: tuliskan deskripsi kontrak terlebih dahulu.");
+        toast.error(
+          "Draft mode: please describe the contract you want to create.",
+        );
         return;
       }
       if (!draftSessionId) {
-        toast.error("Draft mode: session_id tidak ditemukan. Coba lagi.");
+        toast.error("Draft mode: session ID not found. Please try again.");
         return;
       }
     }
@@ -180,10 +182,10 @@ const useChat = () => {
       console.error("[useChat] Error:", err?.response?.data ?? err.message);
       const errMsg =
         err?.response?.status === 401
-          ? "Sesi tidak valid. Silakan login kembali."
+          ? "Session expired. Please log in again."
           : err?.response?.status === 400
-            ? "Permintaan tidak valid. Pastikan file dan pertanyaan sudah benar."
-            : "Maaf, terjadi kesalahan saat menghubungi server. Silakan coba lagi.";
+            ? "Invalid request. Please ensure the file and question are correct."
+            : "Something went wrong while contacting the server. Please try again.";
 
       addMessage("assistant", errMsg);
     } finally {

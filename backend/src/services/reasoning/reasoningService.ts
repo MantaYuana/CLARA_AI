@@ -33,32 +33,32 @@ export interface ReasoningResult {
   confidence_level: ConfidenceLevel; // green / yellow / red
   confidence_label: string;     // human-readable explanation
   variance: number;             // raw JS-entropy (debug/logging)
-  language: "id";
+  language: "id" | "en";
 }
 
 // System Prompt 
 
-const SYSTEM_PROMPT = `Kamu adalah CLARA (Contract & Legal AI Reasoning Assistant), asisten hukum berbasis AI yang dirancang khusus untuk membantu UMKM Indonesia memahami kontrak dan peraturan ketenagakerjaan.
+const SYSTEM_PROMPT = `You are CLARA (Contract & Legal AI Reasoning Assistant), an AI-based legal assistant designed specifically to help Indonesian MSMEs understand contracts and employment regulations.
 
-PANDUAN UTAMA:
-1. PRIORITASKAN KONTEKS HUKUM (RAG) YANG DIBERIKAN: Selalu gunakan informasi, pasal, dan undang-undang dari bagian "KONTEKS HUKUM" terlebih dahulu.
-2. JADIKAN PENGETAHUAN INTERNAL SEBAGAI ALTERNATIF: JIKA DAN HANYA JIKA konteks yang diberikan kosong ATAU sama sekali tidak relevan dengan pertanyaan, barulah kamu boleh menggunakan pengetahuan hukum internalmu (Model Knowledge) untuk menjawab.
-3. WAJIB rujuk ke pasal dan undang-undang yang relevan (format: "Pasal N UU No. X Tahun YYYY").
-4. Gunakan bahasa Indonesia yang jelas dan mudah dipahami oleh pelaku UMKM.
-5. Berikan saran praktis, bukan hanya teori hukum.
-6. Tandai risiko hukum secara eksplisit dengan label [RISIKO TINGGI], [RISIKO SEDANG], atau [PERHATIAN].
+CORE GUIDELINES:
+1. PRIORITIZE PROVIDED LEGAL CONTEXT (RAG): Always use information, articles, and laws from the "LEGAL CONTEXT" section first.
+2. USE INTERNAL KNOWLEDGE AS AN ALTERNATIVE: IF AND ONLY IF the provided context is empty OR completely irrelevant to the question, then you may use your internal legal knowledge to answer.
+3. MUST cite relevant articles and laws (format: "Article N Law No. X Year YYYY").
+4. Use clear English that is easy to understand for MSME business owners.
+5. Provide practical advice, not just legal theory.
+6. Explicitly tag legal risks with labels [HIGH RISK], [MEDIUM RISK], or [ATTENTION].
 
-FORMAT JAWABAN WAJIB:
-- Mulai dengan ringkasan singkat (1-2 kalimat)
-- Analisis hukum berdasarkan pasal yang relevan (HARUS menyebut minimal satu Pasal/UU/PP)
-- Rekomendasi praktis
-- Catatan risiko jika ada`;
+MANDATORY ANSWER FORMAT:
+- Start with a brief summary (1-2 sentences)
+- Legal analysis based on relevant articles (MUST mention at least one Article/Law/Regulation)
+- Practical recommendations
+- Risk notes if any`;
 
 // Context builder 
 
 function buildContext(results: RetrievalResult[]): string {
   if (results.length === 0)
-    return "Tidak ada konteks hukum yang relevan ditemukan.";
+    return "No relevant legal context found.";
   return results
     .map((r, i) => `[${i + 1}] ${r.label}: ${r.title} (${r.source})\n${r.content}`)
     .join("\n\n---\n\n");
@@ -181,21 +181,21 @@ function mapConfidenceLevel(entropy: number, citationCount: number): ConfidenceR
       score: Math.round((1.0 - adjustedEntropy) * 100) / 100,
       level: "green",
       label:
-        "Tinggi – Jawaban berdasarkan teks undang-undang yang jelas dan konsisten.",
+        "High – Answer is based on clear and consistent statutory text.",
     };
   } else if (adjustedEntropy < 0.55) {
     return {
       score: Math.round((0.75 - adjustedEntropy * 0.5) * 100) / 100,
       level: "yellow",
       label:
-        "Sedang – Jawaban bersifat interpretif. Disarankan konsultasi lebih lanjut dengan ahli hukum.",
+        "Medium – Answer is interpretive. Further consultation with a legal expert is recommended.",
     };
   } else {
     return {
       score: Math.round(Math.max(0.05, 0.5 - adjustedEntropy * 0.5) * 100) / 100,
       level: "red",
       label:
-        "Rendah – Isu baru atau terdapat konflik antar sumber hukum. Wajib konsultasi dengan pengacara.",
+        "Low – Novel issue or conflicting legal sources. Consultation with a lawyer is mandatory.",
     };
   }
 }
@@ -216,11 +216,11 @@ export async function reason(
   if (history && history.length > 0) {
     historyPrefix =
       history
-        .map((h) => `[${h.role === "user" ? "Pengguna" : "CLARA"}]: ${h.content}`)
+        .map((h) => `[${h.role === "user" ? "User" : "CLARA"}]: ${h.content}`)
         .join("\n") + "\n\n";
   }
 
-  const prompt = `${historyPrefix}KONTEKS HUKUM:\n${contextText}\n\nPERTANYAAN: ${question}`;
+  const prompt = `${historyPrefix}LEGAL CONTEXT:\n${contextText}\n\nQUESTION: ${question}`;
 
   // Run self-consistency loop
   const paths = await selfConsistencyLoop(prompt, n);
@@ -229,14 +229,14 @@ export async function reason(
   if (paths.length === 0) {
     return {
       answer:
-        "Maaf, terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi.",
+        "Sorry, an error occurred while processing your question. Please try again.",
       citations: [],
       confidence: 0,
       confidence_level: "red",
       confidence_label:
-        "Rendah – Tidak dapat menghasilkan jawaban. Coba lagi atau sederhanakan pertanyaan.",
+        "Low – Cannot generate an answer. Please try again or simplify your question.",
       variance: 1.0,
-      language: "id",
+      language: "en",
     };
   }
 
@@ -311,6 +311,6 @@ export async function reason(
     confidence_level: conf.level,
     confidence_label: conf.label,
     variance: Math.round(entropy * 1000) / 1000,
-    language: "id",
+    language: "en",
   };
 }
