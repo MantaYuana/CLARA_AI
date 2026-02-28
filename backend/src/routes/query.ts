@@ -1,3 +1,18 @@
+/**
+ * query.ts
+ * POST /api/v1/query
+ *
+ * General-purpose legal Q&A endpoint.
+ * When document_id is provided:
+ *   1. Tries hybrid retrieval (vector + BM25 + symbolic + contract clauses)
+ *   2. If context is empty, falls back to fetching raw_text directly from the
+ *      Document node in Neo4j and inserting it as conversation context.
+ *
+ * @swagger
+ * tags:
+ *   name: Query
+ *   description: Legal Q&A with optional document context
+ */
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { hybridRetrieval } from "../services/retrieval/hybridRetrieval";
@@ -47,6 +62,70 @@ async function fetchDocumentText(documentId: string): Promise<string | null> {
 }
 // ------------------------------------------------
 
+/**
+ * @swagger
+ * /api/v1/query:
+ *   post:
+ *     summary: Legal Q&A with hybrid retrieval and optional document context
+ *     description: |
+ *       Ask a legal question with optional uploaded document context.
+ *       When `document_id` is provided, the system first tries hybrid retrieval
+ *       over stored clauses. If no clauses are found, it falls back to injecting
+ *       the document's `raw_text` directly into the reasoning context.
+ *     tags: [Query]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [question]
+ *             properties:
+ *               question:
+ *                 type: string
+ *                 minLength: 3
+ *                 example: "Siapa pihak pertama dan pihak kedua dalam MoU ini?"
+ *               document_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: "UUID returned from POST /api/v1/document/analyze"
+ *               history:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     role:
+ *                       type: string
+ *                       enum: [user, assistant]
+ *                     content:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Answer with citations and confidence score
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 answer:
+ *                   type: string
+ *                 confidence:
+ *                   type: number
+ *                 citations:
+ *                   type: array
+ *                 document_id:
+ *                   type: string
+ *                 context_count:
+ *                   type: integer
+ *                 context_source:
+ *                   type: string
+ *                   enum: [retrieval, raw_text, none]
+ *                   description: "How the document context was injected"
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const parsed = QuerySchema.safeParse(req.body);
   if (!parsed.success) {
