@@ -15,7 +15,7 @@ const GOOGLE_CLIENT_SECRET =
 
 const GOOGLE_CALLBACK_URL =
     process.env.GOOGLE_CALLBACK_URL ??
-    "https://localhost:3001/api/v1/auth/google/callback";
+    "http://localhost:3001/api/v1/auth/google/callback";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "change_me_in_production";
 
@@ -40,12 +40,13 @@ passport.use(
                     { expiresIn: "24h" }
                 );
 
-                done(null, {
+                const authUser: Express.User & { token: string } = {
                     userId: user.id,
                     email: user.email,
                     name: user.name,
                     token,
-                });
+                };
+                done(null, authUser);
             } catch (err) {
                 done(err as Error);
             }
