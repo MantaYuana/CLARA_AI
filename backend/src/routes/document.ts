@@ -18,6 +18,8 @@ import { runGuardrailChecks } from "../services/guardrail/guardrailService";
 import { getSession } from "../config/neo4j";
 import { TaskType } from "@google/generative-ai";
 import { success, error as apiError } from "../utils/response";
+import { verifyToken } from "../middleware/auth";
+import { getUserDashboard } from "../services/dashboard/dashboardService";
 
 const router = Router();
 
@@ -475,8 +477,7 @@ router.get(
  *       401:
  *         description: Unauthorized
  */
-router.get("/user", async (req: Request, res: Response): Promise<void> => {
-    // Note: requires auth middleware to be active on /api/v1/document in index.ts
+router.get("/user", verifyToken, async (req: Request, res: Response): Promise<void> => {
     const userId = (req as Request & { user?: { userId: string } }).user?.userId;
 
     if (!userId || userId === "anonymous") {
@@ -484,58 +485,13 @@ router.get("/user", async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
-    const session = await getSession();
     try {
-        const docResult = await session.run(
-            `
-            MATCH (d:Document { user_id: $userId })
-            RETURN d.id AS id, 
-                   d.filename AS title, 
-                   d.created_at AS created_at,
-                   "review" AS type
-            ORDER BY d.created_at DESC
-            `,
-            { userId }
-        );
-
-        const draftResult = await session.run(
-            `
-            MATCH (ds:DrafterSession { user_id: $userId })
-            RETURN ds.id AS id, 
-                   COALESCE(ds.fields.party_a_name, "Draft") + " - " + ds.document_type AS title,
-                   ds.updated_at AS created_at,
-                   "draft" AS type
-            ORDER BY ds.updated_at DESC
-            `,
-            { userId }
-        );
-
-        const documents = docResult.records.map((r) => ({
-            id: r.get("id"),
-            title: r.get("title"),
-            created_at: r.get("created_at")?.toString() || new Date().toISOString(),
-            type: r.get("type"),
-        }));
-
-        const drafts = draftResult.records.map((r) => ({
-            id: r.get("id"),
-            title: r.get("title"),
-            created_at: r.get("created_at")?.toString() || new Date().toISOString(),
-            type: r.get("type"),
-        }));
-
-        // Combine and sort by date descending
-        const history = [...documents, ...drafts].sort((a, b) => {
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-
+        const history = await getUserDashboard(userId);
         res.json(success(history));
     } catch (err: unknown) {
         console.error("[document/user]", err);
         const message = err instanceof Error ? err.message : "Internal server error";
         res.status(500).json(apiError("INTERNAL", message));
-    } finally {
-        await session.close();
     }
 });
 

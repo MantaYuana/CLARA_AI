@@ -23,14 +23,14 @@ export type DocumentType = "LoI" | "MoU" | "PKS";
 export type DrafterStatus = "needs_clarification" | "draft_ready" | "error";
 
 export interface ConversationTurn {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "model";
   content: string;
 }
 
 export interface DrafterRequest {
   session_id: string;
   message: string;
-  history: ConversationTurn[];
+  history?: ConversationTurn[];
   userId?: string; // set from JWT auth
 }
 
@@ -547,13 +547,33 @@ function assembleDraft(
 // Main export
 
 export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterResponse> {
-  const fullHistory = [...req.history, { role: "user" as const, content: req.message }];
   const userId = req.userId ?? "anonymous";
 
-  // 1. Classify intent
-  const documentType = await classifyIntent(req.message, req.history);
+  // 1. Fetch persistent history
+  const { getSessionHistory, saveChatMessage } = await import("../chat/chatService");
+  const storedHistory = await getSessionHistory(req.session_id);
 
-  // 2. Binding warning
+  // Format history for classification and extraction (which expect "user" | "assistant")
+  const historyForFunctions = storedHistory.map(h => ({
+    role: (h.role === "model" || h.role === "assistant") ? "assistant" as const : "user" as const,
+    content: h.content,
+  }));
+
+  // Format history for Gemini (which expects "user" | "model")
+  const historyForGemini = storedHistory.map(h => ({
+    role: (h.role === "assistant" || h.role === "model") ? "model" as const : "user" as const,
+    content: h.content,
+  }));
+
+  const fullHistory = [...historyForGemini, { role: "user" as const, content: req.message }];
+
+  // 1b. Save the user's incoming message immediately
+  await saveChatMessage(req.session_id, userId, "drafter", "user", req.message);
+
+  // 2. Classify intent
+  const documentType = await classifyIntent(req.message, historyForGemini);
+
+  // ... [Binding warning logic] ...
   const allUserText = fullHistory
     .filter((h) => h.role === "user")
     .map((h) => h.content)
@@ -561,7 +581,7 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   const binding_warning = documentType === "MoU" && hasBindingTerms(allUserText);
 
   // 3. Extract fields
-  const fields = await extractFields(req.message, req.history, documentType);
+  const fields = await extractFields(req.message, historyForFunctions, documentType);
 
   // 4. Confidence gate (Module 5)
   const { score, missingCritical } = assessCompleteness(fields, documentType);
@@ -571,14 +591,18 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
     await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
       () => { },
     );
-    const isEvasion = detectEvasion(req.history, missingCritical);
+    const isEvasion = detectEvasion(historyForFunctions, missingCritical);
     const question = await generateProactiveQuestion(
       fields,
-      req.history,
+      historyForFunctions,
       documentType,
       missingCritical,
       isEvasion,
     );
+
+    // Save AI question to history
+    await saveChatMessage(req.session_id, userId, "drafter", "model", question);
+
     return {
       status: "needs_clarification",
       document_type: documentType,

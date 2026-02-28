@@ -36,6 +36,7 @@ const upload = multer({
 
 const TextBodySchema = z.object({
   text: z.string().min(10).optional(),
+  session_id: z.string().optional(),
   question: z
     .string()
     .optional()
@@ -339,6 +340,11 @@ router.post(
 
       contractText = parsed.data.text;
       const resolvedQuestion = parsed.data.question;
+      const session_id = parsed.data.session_id ?? uuidv4();
+
+      // 1. Save user interaction
+      const { saveChatMessage } = await import("../services/chat/chatService");
+      await saveChatMessage(session_id, userId, "contract", "user", resolvedQuestion, documentId);
 
       const [guardrail, context] = await Promise.all([
         runGuardrailChecks(contractText),
@@ -348,9 +354,13 @@ router.post(
         { role: "user", content: `Contract to analyze:\n${contractText}` },
       ]);
 
+      // 2. Save AI response
+      await saveChatMessage(session_id, userId, "contract", "model", reasoning.answer, documentId);
+
       res.json(
         success({
           success: true,
+          session_id,
           question: resolvedQuestion,
           document_id: documentId,
           answer: reasoning.answer,
