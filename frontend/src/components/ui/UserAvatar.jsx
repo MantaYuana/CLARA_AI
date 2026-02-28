@@ -122,14 +122,17 @@ const UserAvatar = ({ user, onSignOut }) => {
             </div>
 
             {/* Manage account button */}
-            <button
-              className="mt-1 w-full py-2 px-4 rounded-full border border-primary/40
-                         dark:text-primary text-sm font-medium
+            <a
+              href="https://myaccount.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 w-full py-2 px-4 cursor-pointer rounded-full border border-primary/40
+                         dark:text-primary text-xs font-medium text-center block
                          hover:bg-primary/10 transition-colors duration-200"
               onClick={() => setOpen(false)}
             >
-              Manage your Account
-            </button>
+              Manage your Google Account
+            </a>
           </div>
 
           {/* Footer — Sign out */}

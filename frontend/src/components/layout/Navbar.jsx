@@ -65,7 +65,7 @@ const Navbar = () => {
         {/* Projects */}
         <Link
           to="/"
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+          className={`flex items-center cursor-pointer gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             location.pathname === "/"
               ? "dark:bg-surfaceLight border-surfaceLight border text-primary"
               : "dark:text-textSecondary hover:bg-secondary/25 border-secondary dark:hover:bg-surface"
@@ -78,7 +78,7 @@ const Navbar = () => {
         {/* My Files */}
         <Link
           to="/my-files"
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+          className={`flex items-center cursor-pointer gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             location.pathname === "/my-files"
               ? "dark:bg-surfaceLight border-surfaceLight border text-primary"
               : "dark:text-textSecondary hover:bg-secondary/25 border-secondary dark:hover:bg-surface"

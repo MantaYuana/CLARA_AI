@@ -18,7 +18,7 @@ const ProjectToolbar = ({
       <button
         onClick={onCreate}
         disabled={isCreating}
-        className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold
+        className="flex items-center cursor-pointer gap-2 px-5 py-3 rounded-xl text-sm font-semibold
                    bg-primary text-white whitespace-nowrap
                    hover:bg-primary/80 active:scale-95
                    disabled:opacity-60 disabled:cursor-not-allowed

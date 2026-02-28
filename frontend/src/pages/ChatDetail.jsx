@@ -206,7 +206,7 @@ const ChatDetail = () => {
 
           {/* Added h-full to the wrapper so it pushes all the way down */}
           <div
-            className={`h-full flex flex-col w-full lg:w-72 xl:w-80 ${showTutorial ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl transition-all" : ""}`}
+            className={`h-full flex flex-col w-full ${showTutorial ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl transition-all" : ""}`}
           >
             <SourcesPanel
               sources={sources}
