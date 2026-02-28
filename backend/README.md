@@ -98,6 +98,10 @@ This repository contains the core backend services for **CLARA AI**, a multi-age
 CLARA comes with built-in Swagger documentation. Once the server is running, visit:
 `http://localhost:3001/api/docs`
 
+Deployed
+
+`https://claraai.my.id/api/docs/#/`
+
 ---
 
 ## 📁 Directory Structure
