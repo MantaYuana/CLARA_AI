@@ -24,12 +24,13 @@ import documentRouter from "./routes/document";
 import queryRouter from "./routes/query";
 import drafterRouter from "./routes/drafter";
 import authRouter from "./routes/auth";
+import chatRouter from "./routes/chat";
 import { verifyToken } from "./middleware/auth";
 // Start the analysis worker (side-effect import)
 import "./workers/analysisWorker";
 
 const app = express();
-app.set('trust proxy', 1);
+// app.set('trust proxy', 1);
 
 // Middleware
 app.use(
@@ -78,6 +79,7 @@ app.use("/api/v1/contract", verifyToken, contractRouter);
 app.use("/api/v1/document", documentRouter); // Auth optional – worker handles userId
 app.use("/api/v1/query", verifyToken, queryRouter);
 app.use("/api/v1/drafter", verifyToken, drafterRouter);
+app.use("/api/v1/chat", verifyToken, chatRouter);
 
 // 404    
 app.use((_req, res) => {
