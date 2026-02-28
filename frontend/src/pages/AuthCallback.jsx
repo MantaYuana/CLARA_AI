@@ -18,7 +18,7 @@ export default function AuthCallback() {
       localStorage.setItem("token", token);
 
       setTimeout(() => {
-        navigate("/", { replace: true });
+        navigate("/workspace", { replace: true });
       }, 100);
     } catch (error) {
       console.error("AUTH CALLBACK ERROR:", error);
