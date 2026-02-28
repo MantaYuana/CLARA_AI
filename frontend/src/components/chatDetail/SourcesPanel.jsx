@@ -126,9 +126,19 @@ const SourcesPanel = ({
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 dark:border-border shrink-0">
           {!collapsed && (
-            <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
-              Upload File
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
+                Upload File
+              </span>
+              {sources.length > 0 && !isDraftMode && (
+                <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-0.5 rounded-full">
+                  <HiOutlineDocumentText className="text-primary text-xs" />
+                  <span className="text-primary font-medium">
+                    {sources.length} source{sources.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
           <button
             onClick={() => setCollapsed((p) => !p)}

@@ -87,16 +87,6 @@ const ChatInput = ({ onSend, isLoading, selectedCount = 0, activeMode }) => {
                      disabled:opacity-50"
         />
 
-        {/* Sources count badge */}
-        {selectedCount > 0 && (
-          <div className="flex items-center gap-1 text-xs text-textSecondary shrink-0">
-            <HiOutlineDocumentText className="text-primary text-base" />
-            <span className="text-primary font-medium">
-              {selectedCount} source{selectedCount > 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
-
         {/* Send button */}
         <button
           type="submit"
