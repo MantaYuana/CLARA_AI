@@ -10,8 +10,8 @@ import LandingPage from "./pages/LandingPage";
 const App = () => {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/landing-page" element={<LandingPage />} />
+      <Route path="/workspace" element={<Home />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={<Login />} />
       <Route path="/my-files" element={<Files />} />
       <Route path="/chat/:id" element={<ChatDetail />} />

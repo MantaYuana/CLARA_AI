@@ -152,6 +152,7 @@ async function storeClauses(
  */
 router.post(
     "/analyze",
+    verifyToken,
     upload.single("file"),
     async (req: Request, res: Response): Promise<void> => {
         if (!req.file) {
@@ -160,7 +161,12 @@ router.post(
         }
 
         const documentId = uuidv4();
-        const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
+        const userId = (req as Request & { user?: { userId: string } }).user?.userId;
+
+        if (!userId) {
+            res.status(401).json(apiError("UNAUTHORIZED", "User must be authenticated to analyze documents."));
+            return;
+        }
         const filename = req.file.originalname ?? `document-${documentId}`;
         const fileBase64 = req.file.buffer.toString("base64");
 

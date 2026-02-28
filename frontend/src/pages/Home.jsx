@@ -45,6 +45,8 @@ const Home = () => {
         isLoading={isLoading}
         searchQuery={searchQuery}
         onCreate={onCreateNew}
+        onRename={handleRename}
+        onDelete={handleDelete}
       />
     </div>
   );

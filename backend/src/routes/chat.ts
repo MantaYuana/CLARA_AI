@@ -37,8 +37,12 @@ router.get("/session/:sessionId/history", verifyToken, async (req: Request, res:
     const sessionId = req.params.sessionId as string;
 
     try {
-        const history = await getSessionHistory(sessionId);
-        res.json(success({ session_id: sessionId, history }));
+        const { history, endpoint_type } = await getSessionHistory(sessionId);
+        res.json(success({
+            session_id: sessionId,
+            endpoint_type,
+            history
+        }));
     } catch (err: unknown) {
         console.error("[chat/history]", err);
         const message = err instanceof Error ? err.message : "Internal server error";

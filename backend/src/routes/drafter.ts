@@ -111,7 +111,7 @@ router.get("/session/:sessionId", async (req: Request, res: Response) => {
     }
 
     const ds = result.records[0].get("ds").properties;
-    const history = await getSessionHistory(sessionId);
+    const { history } = await getSessionHistory(sessionId);
 
     res.json(success({
       session_id: sessionId,
