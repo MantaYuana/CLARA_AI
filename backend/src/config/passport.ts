@@ -15,7 +15,7 @@ const GOOGLE_CLIENT_SECRET =
 
 const GOOGLE_CALLBACK_URL =
     process.env.GOOGLE_CALLBACK_URL ??
-    "http://localhost:3001/api/v1/auth/google/callback";
+    "https://localhost:3001/api/v1/auth/google/callback";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "change_me_in_production";
 
