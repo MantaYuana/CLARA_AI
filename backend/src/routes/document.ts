@@ -134,15 +134,6 @@ async function storeClauses(
  * /api/v1/document/analyze:
  *   post:
  *     summary: Upload a contract document for OCR, clause extraction, and Neo4j storage
- *     description: |
- *       Upload a contract image or PDF for OCR processing, clause extraction,
- *       embedding generation, and storage in Neo4j.
- *
- *       The original file is saved as **base64** inside a `Document` node in Neo4j,
- *       so it can be retrieved later via `GET /api/v1/document/{documentId}`.
- *
- *       The returned `document_id` can be used in `POST /api/v1/query` for
- *       document-scoped legal Q&A.
  *     tags: [Document]
  *     requestBody:
  *       required: true
@@ -155,62 +146,16 @@ async function storeClauses(
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: "Image (JPEG/PNG/WebP/TIFF/BMP) or PDF — max 10 MB"
  *     responses:
  *       200:
  *         description: Document successfully processed and stored
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 document_id:
- *                   type: string
- *                   format: uuid
- *                 filename:
- *                   type: string
- *                   example: perjanjian_kerjasama.pdf
- *                 page_count:
- *                   type: integer
- *                   example: 3
- *                 clause_count:
- *                   type: integer
- *                   example: 8
- *                 clauses:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       index:
- *                         type: integer
- *                       header:
- *                         type: string
- *                       content_preview:
- *                         type: string
- *                       pasal_references:
- *                         type: array
- *                         items:
- *                           type: string
- *                 embedding_status:
- *                   type: string
- *                   enum: [stored, partial, failed]
- *                 stored_clause_ids:
- *                   type: array
- *                   items:
- *                     type: string
- *                 guardrail:
- *                   type: object
- *       400:
- *         description: No file provided, or unsupported file type
- *       500:
- *         description: OCR failure or storage error
  */
 router.post(
     "/analyze",
     upload.single("file"),
     async (req: Request, res: Response): Promise<void> => {
         if (!req.file) {
-            res.status(400).json(apiError("MISSING_FILE", 'A file upload is required. Send a PDF or image as multipart/form-data field "file".'));
+            res.status(400).json(apiError("MISSING_FILE", 'A file upload is required.'));
             return;
         }
 
@@ -223,69 +168,74 @@ router.post(
             const ocrResult = await processUploadedFile(req.file.buffer, req.file.mimetype);
             const guardrail = await runGuardrailChecks(ocrResult.raw_text);
 
-            // 1. Save Document node with base64 file (persistent storage)
-            let docSaved = false;
-            try {
-                await saveDocumentNode(
-                    documentId,
-                    userId,
-                    filename,
-                    req.file.mimetype,
-                    fileBase64,
-                    ocrResult.raw_text,
-                    ocrResult.page_count ?? null,
-                    ocrResult.clauses.length,
-                );
-                docSaved = true;
-            } catch (err) {
-                console.warn("[document/analyze] Document node save failed:", (err as Error).message);
-            }
+            await saveDocumentNode(
+                documentId,
+                userId,
+                filename,
+                req.file.mimetype,
+                fileBase64,
+                ocrResult.raw_text,
+                ocrResult.page_count ?? null,
+                ocrResult.clauses.length,
+            );
 
-            // 2. Store clauses and link them to the Document node
-            let storedClauseIds: string[] = [];
-            let embeddingStatus: "stored" | "partial" | "failed" = "stored";
-            try {
-                storedClauseIds = await storeClauses(documentId, userId, ocrResult.clauses);
-            } catch (err) {
-                console.warn("[document/analyze] Clause storage failed:", (err as Error).message);
-                embeddingStatus = "failed";
-            }
-
-            if (storedClauseIds.length > 0 && storedClauseIds.length < ocrResult.clauses.length) {
-                embeddingStatus = "partial";
-            }
+            const storedClauseIds = await storeClauses(documentId, userId, ocrResult.clauses);
 
             res.json(success({
                 document_id: documentId,
                 filename,
                 raw_text: ocrResult.raw_text,
-                language: ocrResult.language ?? "id",
                 page_count: ocrResult.page_count ?? null,
                 clause_count: ocrResult.clauses.length,
                 clauses: ocrResult.clauses.map((c) => ({
                     index: c.index,
                     header: c.header,
                     content_preview: c.content_preview,
-                    pasal_references: c.pasal_references,
                 })),
-                embedding_status: embeddingStatus,
                 stored_clause_ids: storedClauseIds,
-                document_saved: docSaved,  // true = file base64 is stored in Neo4j
                 guardrail: {
                     is_safe: guardrail.is_safe,
                     warning_count: guardrail.warning_count,
                     critical_violations: guardrail.critical_violations,
-                    extracted_variables: guardrail.extracted_variables,
-                    all_checks: guardrail.checks,
                 },
             }));
         } catch (err: unknown) {
             console.error("[document/analyze]", err);
-            const message = err instanceof Error ? err.message : "Internal server error";
-            res.status(500).json(apiError("ANALYSIS_ERROR", message));
+            res.status(500).json(apiError("ANALYSIS_ERROR", err instanceof Error ? err.message : "Internal server error"));
         }
     },
 );
+
+//   GET /api/v1/document/user  
+
+/**
+ * @swagger
+ * /api/v1/document/user:
+ *   get:
+ *     summary: Get all documents and drafter projects for the current user
+ *     tags: [Document]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user projects and documents
+ */
+router.get("/user", verifyToken, async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as Request & { user?: { userId: string } }).user?.userId;
+
+    if (!userId || userId === "anonymous") {
+        res.status(401).json(apiError("UNAUTHORIZED", "You must be logged in to view your documents."));
+        return;
+    }
+
+    try {
+        const history = await getUserDashboard(userId);
+        res.json(success(history));
+    } catch (err: unknown) {
+        console.error("[document/user]", err);
+        res.status(500).json(apiError("INTERNAL", err instanceof Error ? err.message : "Internal server error"));
+    }
+});
 
 //   GET /api/v1/document/:documentId     ─
 
@@ -293,7 +243,7 @@ router.post(
  * @swagger
  * /api/v1/document/{documentId}:
  *   get:
- *     summary: Retrieve a stored document (metadata + clauses + original file as base64)
+ *     summary: Retrieve a stored document
  *     tags: [Document]
  *     parameters:
  *       - in: path
@@ -301,32 +251,9 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
  *     responses:
  *       200:
  *         description: Document found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 document_id:
- *                   type: string
- *                 filename:
- *                   type: string
- *                 mime_type:
- *                   type: string
- *                 page_count:
- *                   type: integer
- *                 clause_count:
- *                   type: integer
- *                 file_base64:
- *                   type: string
- *                   description: Original file encoded as base64
- *                 clauses:
- *                   type: array
- *       404:
- *         description: Document not found
  */
 router.get(
     "/:documentId",
@@ -335,7 +262,6 @@ router.get(
         const session = await getSession();
 
         try {
-            // Fetch Document node + all linked clauses
             const result = await session.run(
                 `
         MATCH (d:Document { id: $documentId })
@@ -353,37 +279,28 @@ router.get(
             );
 
             if (result.records.length === 0) {
-                res.status(404).json(apiError("NOT_FOUND", `Document "${documentId}" not found. Make sure it was uploaded via POST /api/v1/document/analyze.`));
+                res.status(404).json(apiError("NOT_FOUND", `Document "${documentId}" not found.`));
                 return;
             }
 
             const record = result.records[0];
             const doc = record.get("d").properties;
-            const clauses = record.get("clauses") as Array<Record<string, unknown>>;
+            const clauses = record.get("clauses") as any[];
 
             res.json(success({
-                document_id: doc.id as string,
-                filename: doc.filename as string,
-                mime_type: doc.mime_type as string,
-                page_count: doc.page_count as number | null,
-                clause_count: doc.clause_count as number,
-                raw_text: doc.raw_text as string,
-                file_base64: doc.file_base64 as string,
-                created_at: doc.created_at as string,
-                clauses: clauses
-                    .filter((c) => c.id !== null)
-                    .sort((a, b) => (a.index as number) - (b.index as number))
-                    .map((c) => ({
-                        id: c.id,
-                        index: c.index,
-                        header: c.header,
-                        content_preview: c.content_preview ?? (c.content as string)?.slice(0, 200),
-                    })),
+                document_id: doc.id,
+                filename: doc.filename,
+                mime_type: doc.mime_type,
+                page_count: doc.page_count,
+                clause_count: doc.clause_count,
+                raw_text: doc.raw_text,
+                file_base64: doc.file_base64,
+                created_at: doc.created_at,
+                clauses: clauses.filter(c => c.id !== null),
             }));
         } catch (err: unknown) {
             console.error("[document/get]", err);
-            const message = err instanceof Error ? err.message : "Internal server error";
-            res.status(500).json(apiError("INTERNAL", message));
+            res.status(500).json(apiError("INTERNAL", err instanceof Error ? err.message : "Internal server error"));
         } finally {
             await session.close();
         }
@@ -398,17 +315,6 @@ router.get(
  *   get:
  *     summary: Poll the status of an async document analysis job
  *     tags: [Document]
- *     parameters:
- *       - in: path
- *         name: jobId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Current job state
- *       404:
- *         description: Job not found
  */
 router.get(
     "/analyze/:jobId/status",
@@ -432,67 +338,9 @@ router.get(
                 res.json(success({ status: state, progress: job.progress }));
             }
         } catch {
-            res.status(503).json(apiError("QUEUE_UNAVAILABLE", "Job queue is not available. Make sure Redis is running."));
+            res.status(503).json(apiError("QUEUE_UNAVAILABLE", "Job queue is not available."));
         }
     },
 );
-
-//   GET /api/v1/document/user  
-
-/**
- * @swagger
- * /api/v1/document/user:
- *   get:
- *     summary: Get all documents and drafter projects for the current user
- *     description: Retrieve a combined history of uploaded contract documents and active/completed drafter sessions for the logged-in user.
- *     tags: [Document]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of user projects and documents
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                       title:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
- *                       type:
- *                         type: string
- *                         enum: [review, draft]
- *       401:
- *         description: Unauthorized
- */
-router.get("/user", verifyToken, async (req: Request, res: Response): Promise<void> => {
-    const userId = (req as Request & { user?: { userId: string } }).user?.userId;
-
-    if (!userId || userId === "anonymous") {
-        res.status(401).json(apiError("UNAUTHORIZED", "You must be logged in to view your documents."));
-        return;
-    }
-
-    try {
-        const history = await getUserDashboard(userId);
-        res.json(success(history));
-    } catch (err: unknown) {
-        console.error("[document/user]", err);
-        const message = err instanceof Error ? err.message : "Internal server error";
-        res.status(500).json(apiError("INTERNAL", message));
-    }
-});
 
 export default router;
