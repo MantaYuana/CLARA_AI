@@ -1,18 +1,3 @@
-/**
- * query.ts
- * POST /api/v1/query
- *
- * General-purpose legal Q&A endpoint.
- * When document_id is provided:
- *   1. Tries hybrid retrieval (vector + BM25 + symbolic + contract clauses)
- *   2. If context is empty, falls back to fetching raw_text directly from the
- *      Document node in Neo4j and injecting it as conversation context
- *
- * @swagger
- * tags:
- *   name: Query
- *   description: Legal Q&A with optional document context
- */
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { hybridRetrieval } from "../services/retrieval/hybridRetrieval";
@@ -21,6 +6,12 @@ import { getSession } from "../config/neo4j";
 import { v4 as uuidv4 } from "uuid";
 import { success, error } from "../utils/response";
 
+// --- Pindahkan import ke paling atas ---
+import {
+  getSessionHistory,
+  saveChatMessage,
+} from "../services/chat/chatService";
+
 const router = Router();
 
 const QuerySchema = z.object({
@@ -28,13 +19,14 @@ const QuerySchema = z.object({
   document_id: z.string().uuid().optional(),
   session_id: z.string().optional(),
   history: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+    .array(
+      z.object({ role: z.enum(["user", "assistant"]), content: z.string() }),
+    )
     .optional()
     .default([]),
 });
 
-//   Fallback: fetch raw_text from Document node                ─
-
+// --- FUNGSI INI DIKEMBALIKAN (JANGAN DIHAPUS) ---
 async function fetchDocumentText(documentId: string): Promise<string | null> {
   const session = await getSession();
   try {
@@ -53,103 +45,65 @@ async function fetchDocumentText(documentId: string): Promise<string | null> {
     await session.close();
   }
 }
+// ------------------------------------------------
 
-//   POST /api/v1/query      ─
-
-/**
- * @swagger
- * /api/v1/query:
- *   post:
- *     summary: Legal Q&A with hybrid retrieval and optional document context
- *     description: |
- *       Ask a legal question with optional uploaded document context.
- *       When `document_id` is provided, the system first tries hybrid retrieval
- *       over stored clauses. If no clauses are found, it falls back to injecting
- *       the document's `raw_text` directly into the reasoning context.
- *     tags: [Query]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [question]
- *             properties:
- *               question:
- *                 type: string
- *                 minLength: 3
- *                 example: "Siapa pihak pertama dan pihak kedua dalam MoU ini?"
- *               document_id:
- *                 type: string
- *                 format: uuid
- *                 description: "UUID returned from POST /api/v1/document/analyze"
- *               history:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     role:
- *                       type: string
- *                       enum: [user, assistant]
- *                     content:
- *                       type: string
- *     responses:
- *       200:
- *         description: Answer with citations and confidence score
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 answer:
- *                   type: string
- *                 confidence:
- *                   type: number
- *                 citations:
- *                   type: array
- *                 document_id:
- *                   type: string
- *                 context_count:
- *                   type: integer
- *                 context_source:
- *                   type: string
- *                   enum: [retrieval, raw_text, none]
- *                   description: "How the document context was injected"
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- */
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const parsed = QuerySchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json(error("VALIDATION_ERROR", "Invalid request body", parsed.error.flatten().fieldErrors));
+    res
+      .status(400)
+      .json(
+        error(
+          "VALIDATION_ERROR",
+          "Invalid request body",
+          parsed.error.flatten().fieldErrors,
+        ),
+      );
     return;
   }
 
-  const { question, document_id, history, session_id: req_session_id } = parsed.data;
-  const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
+  const {
+    question,
+    document_id,
+    history,
+    session_id: req_session_id,
+  } = parsed.data;
+  const userId =
+    (req as Request & { user?: { userId: string } }).user?.userId ??
+    "anonymous";
   const session_id = req_session_id ?? uuidv4();
 
   try {
-    // 0. Load history from DB
-    const { getSessionHistory, saveChatMessage } = await import("../services/chat/chatService");
-    const { history: storedHistory } = await getSessionHistory(session_id);
+    // Penanganan Tipe TypeScript yang aman:
+    // Mengakomodasi jika kembaliannya berupa Array langsung atau Object yang memiliki property 'history'
+    const historyData = await getSessionHistory(session_id);
+    const storedHistory: any[] = Array.isArray(historyData)
+      ? historyData
+      : ((historyData as any).history ?? []);
 
     // 1. Save user's question immediately
-    await saveChatMessage(session_id, userId, "query", "user", question, document_id);
+    await saveChatMessage(
+      session_id,
+      userId,
+      "query",
+      "user",
+      question,
+      document_id,
+    );
 
     // 2. Hybrid retrieval (vector + BM25 + symbolic + contract clauses)
     const context = await hybridRetrieval(question, document_id);
 
     let contextSource: "retrieval" | "raw_text" | "none" = "retrieval";
 
-    // Combine frontend history (for backward compatibility/migration) with stored history
-    // and format for Gemini reasoning
+    // Combine frontend history with stored history and format for Gemini reasoning
     const baseHistory = storedHistory.length > 0 ? storedHistory : history;
-    let extraHistory = baseHistory.map((h) => ({
-      role: (h.role === "assistant" || h.role === "model") ? "model" as const : "user" as const,
-      content: h.content
+    let extraHistory = baseHistory.map((h: any) => ({
+      role:
+        h.role === "assistant" || h.role === "model"
+          ? ("model" as const)
+          : ("user" as const),
+      content: h.content,
     }));
 
     // 3. If document_id is provided but context is empty → inject raw_text directly
@@ -173,7 +127,14 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     const reasoning = await reason(question, context, extraHistory);
 
     // 4. Save assistant response
-    await saveChatMessage(session_id, userId, "query", "model", reasoning.answer, document_id);
+    await saveChatMessage(
+      session_id,
+      userId,
+      "query",
+      "assistant",
+      reasoning.answer,
+      document_id,
+    );
 
     res.json(
       success({
@@ -189,7 +150,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     );
   } catch (err: unknown) {
     console.error("[query]", err);
-    const message = err instanceof Error ? err.message : "Internal server error";
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
     res.status(500).json(error("INTERNAL", message));
   }
 });
