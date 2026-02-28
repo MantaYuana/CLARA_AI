@@ -13,17 +13,18 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading, logout } = useAuth();
 
-  // Theme init
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
 
-    if (savedTheme === "dark") {
+    if (!savedTheme || savedTheme === "dark") {
       document.documentElement.classList.add("dark");
       setIsDark(true);
+    } else {
+      document.documentElement.classList.remove("dark");
+      setIsDark(false);
     }
   }, []);
 
-  // Scroll detection
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -36,7 +37,7 @@ const Navbar = () => {
   const toggleTheme = () => {
     if (isDark) {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+      localStorage.setItem("theme", "light");  
     } else {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
