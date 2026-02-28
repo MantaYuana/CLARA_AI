@@ -214,10 +214,10 @@ export default function LandingPage() {
     <div className="w-full min-h-screen bg-black overflow-hidden font-sans" onMouseMove={handleMouseMove}>
       {/* --- NAVBAR --- */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-black/40 backdrop-blur-md border-b border-white/10">
-        <Link to="/" className="text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity">
+        <Link to="/workspace" className="text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity">
           <span className="bg-linear-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">Clara.</span>
         </Link>
-        <Link to="/" className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] rounded-full transition-all shadow-[0_0_20px_rgba(124,58,237,0.3)]">
+        <Link to="/workspace" className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] rounded-full transition-all shadow-[0_0_20px_rgba(124,58,237,0.3)]">
           Create New
         </Link>
       </nav>
@@ -658,7 +658,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand Col */}
           <div className="md:col-span-2">
-            <Link to="/" className="text-2xl font-bold tracking-tight">
+            <Link to="/workspace" className="text-2xl font-bold tracking-tight">
               <span className="bg-linear-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">Clara.</span>
             </Link>
             <p className="mt-4 text-gray-500 max-w-sm leading-relaxed">
@@ -670,9 +670,9 @@ export default function LandingPage() {
           <div>
             <h4 className="text-white font-semibold mb-6">Product</h4>
             <ul className="space-y-4 text-gray-500">
-              <li><Link to="/" className="hover:text-purple-400 transition-colors">Features</Link></li>
-              <li><Link to="/" className="hover:text-purple-400 transition-colors">Legal AI</Link></li>
-              <li><Link to="/" className="hover:text-purple-400 transition-colors">Security</Link></li>
+              <li><Link to="/workspace" className="hover:text-purple-400 transition-colors">Features</Link></li>
+              <li><Link to="/workspace" className="hover:text-purple-400 transition-colors">Legal AI</Link></li>
+              <li><Link to="/workspace" className="hover:text-purple-400 transition-colors">Security</Link></li>
             </ul>
           </div>
 

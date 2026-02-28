@@ -33,9 +33,17 @@ const ChatDetail = () => {
     isLoading,
     sendChatMessage,
     queryOnly,
+    loadSession,
   } = useChat();
 
   const { handleCreate } = useProjects();
+
+  // Load chat history ketika membuka session yang sudah ada
+  useEffect(() => {
+    if (id) {
+      loadSession(id);
+    }
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- ONBOARDING TUTORIAL STATE ---
   const [showTutorial, setShowTutorial] = useState(false);
@@ -94,6 +102,7 @@ const ChatDetail = () => {
       try {
         const response = await queryOnly({
           message: `Provide a short title (maximum 5 words) summarizing the following prompt:\n\n"${firstUserMessage.content}"`,
+          skipHistory: true,
         });
 
         if (response?.content) {
@@ -136,6 +145,9 @@ const ChatDetail = () => {
             background: "#1a1721",
             color: "#f0edf5",
             border: "1px solid #3a3444",
+            maxWidth: "360px",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
           },
         }}
       />

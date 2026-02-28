@@ -56,7 +56,7 @@ const Navbar = () => {
       `}
     >
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-2">
+      <Link to="/workspace" className="flex items-center gap-2">
         <span className="text-xl md:text-2xl font-semibold tracking-tight bg-linear-to-b from-secondary to-primary bg-clip-text text-transparent">
           Clara.
         </span>
@@ -65,7 +65,7 @@ const Navbar = () => {
       <div className="flex items-center gap-2">
         {/* Projects */}
         <Link
-          to="/"
+          to="/workspace"
           className={`flex items-center cursor-pointer gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             location.pathname === "/"
               ? "dark:bg-surfaceLight border-surfaceLight border text-primary"

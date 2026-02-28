@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sendMessage } from "../Services/chatService";
+import { fetchChatHistory, sendMessage } from "../Services/chatService";
 import { reviewContract } from "../Services/reviewService";
 import { drafterChat } from "../Services/drafterService";
 import toast from "react-hot-toast";
@@ -13,30 +13,18 @@ const INITIAL_MESSAGE = {
 };
 
 /**
- * Generate a unique session ID for draft mode
+ * Generate a unique session ID untuk semua mode
  */
 const generateSessionId = () => {
-  return `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-/**
- * useChat — manages chat messages and active mode.
- *
- * Routing logic:
- *  - mode === 'review' → calls reviewContract (POST /contract/review)
- *                        requires: selectedFile (File object) + message (question)
- *  - mode === 'draft'   → calls drafterChat (POST /api/v1/drafter/chat)
- *                        requires: session_id + message + history[]
- *  - any other mode   → calls sendMessage (POST /query)
- *                        requires: message + optional selectedSourceIds
- *
- * sendChatMessage param:
- *  { message: string, selectedSourceIds: string[], selectedFile: File|null, mode: string|null }
- */
 const useChat = () => {
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [activeMode, setActiveModeState] = useState(null);
-  const [draftSessionId, setDraftSessionId] = useState(null);
+
+  // Menggunakan nama sessionId karena berlaku untuk semua mode
+  const [sessionId, setSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const addMessage = (role, content, extras = {}) =>
@@ -51,29 +39,15 @@ const useChat = () => {
       },
     ]);
 
-  /**
-   * Wrapper for setActiveMode that generates session_id for draft mode
-   */
   const setActiveMode = (mode) => {
     setActiveModeState(mode);
-    if (mode === "draft") {
-      const newSessionId = generateSessionId();
-      setDraftSessionId(newSessionId);
-      console.log(
-        "[useChat] Draft mode activated with session_id:",
-        newSessionId,
-      );
-    } else {
-      setDraftSessionId(null);
-    }
+    // Kita hapus reset sessionId di sini agar session ID tetap bertahan
+    // meski user berganti-ganti mode di tengah percakapan.
   };
 
-  /**
-   * Build conversation history from messages for drafter API
-   */
   const buildDraftHistory = () => {
     return messages
-      .filter((msg) => msg.id !== "init") // exclude init message
+      .filter((msg) => msg.id !== "init")
       .map((msg) => ({
         role: msg.role,
         content: msg.content,
@@ -86,7 +60,7 @@ const useChat = () => {
     selectedFile = null,
     mode,
   }) => {
-    // ── Validation: Review mode requires exactly one file ──────────────────
+    // ── Validation ───────────────────────────────────────────────
     if (mode === "review") {
       if (!selectedFile) {
         toast.error(
@@ -100,21 +74,24 @@ const useChat = () => {
       }
     }
 
-    // ── Validation: Draft mode requires message ────────────────────────────
-    if (mode === "draft") {
-      if (!message?.trim()) {
-        toast.error(
-          "Draft mode: please describe the contract you want to create.",
-        );
-        return;
-      }
-      if (!draftSessionId) {
-        toast.error("Draft mode: session ID not found. Please try again.");
-        return;
-      }
+    if (mode === "draft" && !message?.trim()) {
+      toast.error(
+        "Draft mode: please describe the contract you want to create.",
+      );
+      return;
     }
 
-    // Optimistically add user message
+    // ── Generate Session ID jika ini adalah pesan pertama ────────
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      setSessionId(currentSessionId);
+      console.log(
+        "[sendChatMessage] Generated new session_id on first message:",
+        currentSessionId,
+      );
+    }
+
     addMessage("user", message.trim(), {
       attachment:
         mode === "review" && selectedFile
@@ -125,11 +102,11 @@ const useChat = () => {
 
     try {
       if (mode === "review") {
-        // ── Review Contract mode ───────────────────────────────────────────
         const { content, confidenceScore, citations, label, rationale } =
           await reviewContract({
             file: selectedFile,
             question: message.trim(),
+            session_id: currentSessionId, // <-- SEKARANG DIKIRIM KE BACKEND
           });
 
         addMessage("assistant", content, {
@@ -139,7 +116,6 @@ const useChat = () => {
           rationale: rationale ?? null,
         });
       } else if (mode === "draft") {
-        // ── Draft Contract mode ────────────────────────────────────────────
         const history = buildDraftHistory();
         const {
           content,
@@ -151,7 +127,7 @@ const useChat = () => {
           draft,
           pdfBase64,
         } = await drafterChat({
-          session_id: draftSessionId,
+          session_id: currentSessionId,
           message: message.trim(),
           history,
         });
@@ -166,11 +142,11 @@ const useChat = () => {
           pdfBase64: pdfBase64 ?? null,
         });
       } else {
-        // ── Query mode (default) ───────────────────────────────────────────
         const { content, confidenceScore, citations } = await sendMessage({
           message,
           fileIds: selectedSourceIds,
           mode,
+          session_id: currentSessionId, // <-- SEKARANG DIKIRIM KE BACKEND
         });
 
         addMessage("assistant", content, {
@@ -197,18 +173,65 @@ const useChat = () => {
     message,
     selectedSourceIds = [],
     mode = null,
+    skipHistory = false, // <--- 1. Tambahkan parameter ini
   }) => {
-    try {
-      const { content } = await sendMessage({
-        message,
-        fileIds: selectedSourceIds,
-        mode,
-      });
+    // ── Generate Session ID jika ini adalah pesan pertama ────────
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      setSessionId(currentSessionId);
+    }
 
-      return { content };
+    try {
+      if (mode === "draft") {
+        const history = buildDraftHistory();
+        const response = await drafterChat({
+          session_id: skipHistory ? null : currentSessionId, // Jangan kirim ID jika skipHistory true
+          message: message.trim(),
+          history,
+        });
+
+        return response;
+      } else {
+        const { content } = await sendMessage({
+          message,
+          fileIds: selectedSourceIds,
+          mode,
+          // Gunakan ID statis jika skipHistory agar tidak nyampah di database
+          session_id: skipHistory ? "temp_title_gen" : currentSessionId,
+        });
+
+        return { content };
+      }
     } catch (err) {
       console.error("[queryOnly] Error:", err);
       return null;
+    }
+  };
+  const loadSession = async (existingSessionId) => {
+    setIsLoading(true);
+    try {
+      // 1. Set Session ID langsung agar hook tahu ini room milik ID tersebut
+      setSessionId(existingSessionId);
+
+      const data = await fetchChatHistory(existingSessionId);
+
+      // 2. Load pesan JIKA ada history-nya
+      if (data && data.history && data.history.length > 0) {
+        const loadedMessages = data.history.map((msg, index) => ({
+          id: `${msg.role[0]}-${Date.now()}-${index}`,
+          role: msg.role === "model" ? "assistant" : msg.role,
+          content: msg.content,
+          timestamp: new Date().toISOString(),
+        }));
+
+        setMessages([INITIAL_MESSAGE, ...loadedMessages]);
+      }
+    } catch (err) {
+      // Jika error 404 (karena chat benar-benar baru), kita bisa abaikan toast error-nya
+      console.log("History kosong atau sesi baru");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -219,6 +242,7 @@ const useChat = () => {
     isLoading,
     sendChatMessage,
     queryOnly,
+    loadSession,
   };
 };
 

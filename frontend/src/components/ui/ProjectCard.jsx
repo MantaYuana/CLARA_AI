@@ -181,13 +181,7 @@ const ProjectCard = ({ project, onRename, onDelete }) => {
       </div>
 
       {/* Footer meta */}
-      <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/60">
-        <div className="flex items-center gap-1.5 dark:text-textSecondary text-xs">
-          <HiOutlineDocument className="text-sm" />
-          <span>
-            {sourcesCount} {sourcesCount === 1 ? "source" : "sources"}
-          </span>
-        </div>
+      <div className="flex items-center justify-start mt-auto pt-2 border-t border-border/60">
         <div className="flex items-center gap-1.5 dark:text-textSecondary text-xs">
           <HiOutlineClock className="text-sm" />
           <span>{formatRelativeTime(updatedAt)}</span>

@@ -58,7 +58,7 @@ const ChatDetailTopbar = ({
     <header className="relative flex items-center justify-between gap-4 px-4 md:px-6 lg:px-10 py-3 bg-white dark:bg-backgroundBlack border-b border-gray-300 dark:border-border shrink-0 z-40">
       {/* Left — Logo */}
       <div className="shrink-0">
-        <Link to="/">
+        <Link to="/workspace">
           <span className="text-lg md:text-xl font-semibold tracking-tight bg-linear-to-b from-secondary to-primary bg-clip-text text-transparent">
             Clara.
           </span>

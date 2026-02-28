@@ -4,6 +4,13 @@ import toast from "react-hot-toast";
 import { analyzeFile } from "../Services/sourceService";
 
 const MAX_SELECTED = 1; // max files that can be checked/selected simultaneously
+const MAX_NAME_DISPLAY = 30; // max chars shown in toast messages
+
+/** Truncates a filename to MAX_NAME_DISPLAY chars with ellipsis */
+const truncateName = (name) =>
+  name.length > MAX_NAME_DISPLAY
+    ? `${name.slice(0, MAX_NAME_DISPLAY)}…`
+    : name;
 const MAX_SIZE_MB = 10; // max size per file (10 MB)
 
 const ACCEPTED_TYPES = [
@@ -82,7 +89,7 @@ const useSources = () => {
         console.log(
           `[useSources] "${item.name}" analyzed successfully, documentId: ${documentId}`,
         );
-        toast.success(`"${item.name}" analyzed successfully`);
+        toast.success(`"${truncateName(item.name)}" analyzed successfully`);
       } catch (err) {
         console.error(
           "[useSources] Analyze error:",
@@ -91,7 +98,7 @@ const useSources = () => {
         setSources((prev) =>
           prev.map((s) => (s.id === item.id ? { ...s, status: "error" } : s)),
         );
-        toast.error(`Failed to analyze "${item.name}"`);
+        toast.error(`Failed to analyze "${truncateName(item.name)}"`);
       }
     }
   };
