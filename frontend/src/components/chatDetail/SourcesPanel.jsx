@@ -40,15 +40,6 @@ const SourcesPanel = ({
   const [recentlyReadyIds, setRecentlyReadyIds] = useState([]);
   const prevSourcesRef = useRef(sources);
 
-  // ── My Documents state ─────────────────────────────────────────────────────
-  // const [userDocuments, setUserDocuments] = useState([]);
-  // const [docsLoading, setDocsLoading] = useState(false);
-  // const [docsError, setDocsError] = useState(null);
-
-  // useEffect(() => {
-  //   const loadDocs = async () => { ... }
-  // }, []);
-
   useEffect(() => {
     const newReadyIds = [];
 
@@ -101,19 +92,6 @@ const SourcesPanel = ({
     return (
       <div className="w-4 h-4 rounded-full border-[1.5px] border-gray-400 dark:border-gray-500 shrink-0 transition-opacity duration-300" />
     );
-  };
-
-  /** Format a date string into a short readable form */
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "";
-    }
   };
 
   return (
@@ -248,30 +226,31 @@ const SourcesPanel = ({
                   >
                     {renderStatusIcon(s)}
 
-                    {/* File name */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center">
+                        <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center">
                           <HiOutlineDocumentText className="text-primary text-lg" />
                         </div>
-                        <p
-                          className={`text-xs font-medium truncate ${
-                            s.selected && !isDraftMode
-                              ? "text-primary"
-                              : "dark:text-textPrimary text-gray-800"
-                          }`}
-                        >
-                          {s.name}
-                        </p>
+
+                        <div className="flex flex-col flex-1 min-w-0 ml-2 gap-0.5">
+                          <p
+                            className={`text-xs font-medium truncate ${
+                              s.selected && !isDraftMode
+                                ? "text-primary"
+                                : "dark:text-textPrimary text-gray-800"
+                            }`}
+                          >
+                            {s.name}
+                          </p>
+                          {s.status === "analyzing" && (
+                            <p className="dark:text-textSecondary text-[10px] truncate">
+                              Analyzing...
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {s.status === "analyzing" && (
-                        <p className="dark:text-textSecondary text-[10px]">
-                          Analyzing...
-                        </p>
-                      )}
                     </div>
 
-                    {/* Remove button — hidden in draft mode */}
                     {s.status !== "analyzing" && !isDraftMode && (
                       <button
                         onClick={(e) => {
@@ -287,9 +266,6 @@ const SourcesPanel = ({
                 ))}
               </ul>
             )}
-
-            {/* ── My Documents Section (Commented Out) ──────────────── */}
-            {/* ... */}
           </div>
         )}
       </div>

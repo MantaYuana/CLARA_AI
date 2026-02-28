@@ -68,13 +68,13 @@ const AttachmentChip = ({ attachment }) => {
   if (!attachment) return null;
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/20 max-w-fit">
-      <HiOutlineDocumentText className="text-white/80 text-base shrink-0" />
+      <HiOutlineDocumentText className="dark:text-white/80 text-base shrink-0" />
       <div className="flex flex-col min-w-0">
-        <span className="text-xs text-white font-medium truncate max-w-[180px]">
+        <span className="text-xs dark:text-white font-medium truncate max-w-45">
           {attachment.name}
         </span>
         {attachment.size && (
-          <span className="text-[10px] text-white/60">
+          <span className="text-[10px] dark:text-white/60">
             {formatSize(attachment.size)}
           </span>
         )}
@@ -116,7 +116,7 @@ const ConfidenceBar = ({ score }) => {
     >
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`} />
       <span className={`text-xs font-medium ${style.text}`}>{style.label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full dark:bg-white/10 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-700 ${style.bar}`}
           style={{ width: `${style.pct}%` }}
@@ -134,7 +134,7 @@ const CitationList = ({ citations }) => {
   if (!citations || citations.length === 0) return null;
   return (
     <div className="mt-3 pt-3 border-t border-border/60">
-      <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold mb-2">
+      <p className="text-[10px] uppercase tracking-widest dark:text-textSecondary/60 font-semibold mb-2">
         Sources
       </p>
       <div className="flex flex-col gap-1.5">
@@ -150,23 +150,23 @@ const CitationList = ({ citations }) => {
           return (
             <div
               key={idx}
-              className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-backgroundBlack/60 border border-border/40
+              className="flex items-start gap-2 px-2.5 py-2 rounded-lg dark:bg-backgroundBlack/60 border border-border/40
                          hover:border-primary/30 transition-colors duration-150"
             >
               <span className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/20 text-primary text-[9px] font-bold shrink-0 mt-0.5">
                 {idx + 1}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-textSecondary text-xs leading-snug truncate">
+                <p className="dark:text-textSecondary text-xs leading-snug truncate">
                   {title}
                 </p>
                 {subtitle && subtitle !== title && (
-                  <p className="text-textSecondary/50 text-[10px] mt-0.5 truncate">
+                  <p className="dark:text-textSecondary/50 text-gray-600 text-[10px] mt-0.5 truncate">
                     {subtitle}
                   </p>
                 )}
                 {page && (
-                  <p className="text-textSecondary/50 text-[10px] mt-0.5">
+                  <p className="dark:text-textSecondary/50 text-[10px] mt-0.5">
                     Page {page}
                   </p>
                 )}
@@ -176,12 +176,12 @@ const CitationList = ({ citations }) => {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-textSecondary/50 hover:text-primary transition-colors shrink-0"
+                  className="dark:text-textSecondary/50 hover:text-primary transition-colors shrink-0"
                 >
                   <HiOutlineExternalLink className="text-sm" />
                 </a>
               ) : (
-                <HiOutlineDocumentText className="text-textSecondary/30 text-sm shrink-0" />
+                <HiOutlineDocumentText className="dark:text-textSecondary/30 text-sm shrink-0" />
               )}
             </div>
           );
@@ -233,7 +233,7 @@ const ClarifyingQuestionsList = ({ questions }) => {
   if (!questions || questions.length === 0) return null;
   return (
     <div className="mt-1 pt-3 border-t border-border/60">
-      <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold mb-2">
+      <p className="text-[10px] uppercase tracking-widest dark:text-textSecondary/60 font-semibold mb-2">
         Clarification Questions
       </p>
       <div className="flex flex-col gap-2">
@@ -246,7 +246,7 @@ const ClarifyingQuestionsList = ({ questions }) => {
             <div className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 shrink-0 mt-0.5">
               <HiOutlineQuestionMarkCircle className="text-yellow-400 text-xs" />
             </div>
-            <p className="text-textPrimary text-sm leading-snug">
+            <p className="dark:text-textPrimary text-sm leading-snug">
               {stripMarkdown(q)}
             </p>
           </div>
@@ -300,7 +300,7 @@ const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           <HiOutlineDocumentDuplicate className="text-primary text-sm" />
-          <p className="text-[10px] uppercase tracking-widest text-textSecondary/60 font-semibold">
+          <p className="text-[10px] uppercase tracking-widest dark:text-textSecondary/60 font-semibold">
             Contract Draft{documentNumber ? ` · ${documentNumber}` : ""}
           </p>
         </div>
@@ -321,8 +321,8 @@ const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
       </div>
 
       {/* Draft plain text */}
-      <div className="rounded-xl bg-backgroundBlack/60 border border-border/60 p-4 max-h-[420px] overflow-y-auto">
-        <p className="text-sm text-textSecondary leading-relaxed whitespace-pre-wrap font-sans">
+      <div className="rounded-xl bg-backgroundBlack/60 border border-border/60 p-4 max-h-105 overflow-y-auto">
+        <p className="text-sm dark:text-textSecondary leading-relaxed whitespace-pre-wrap font-sans">
           {plainText}
         </p>
       </div>
@@ -333,22 +333,22 @@ const DraftContent = ({ draft, pdfBase64, documentNumber }) => {
 // ── Markdown renderer ─────────────────────────────────────────────────────────
 const mdComponents = {
   p: ({ children }) => (
-    <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+    <p className="mb-2 last:mb-0 text-justify leading-relaxed">{children}</p>
   ),
   strong: ({ children }) => (
-    <strong className="font-semibold text-textPrimary">{children}</strong>
+    <strong className="font-semibold dark:text-textPrimary">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="italic text-textSecondary">{children}</em>
+    <em className="italic dark:text-textSecondary">{children}</em>
   ),
   ul: ({ children }) => (
-    <ul className="list-disc list-inside space-y-1 my-2 pl-1">{children}</ul>
+    <ul className="list-disc text-justify list-outside ml-3 space-y-1 my-2 pl-1">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-inside space-y-1 my-2 pl-1">{children}</ol>
+    <ol className="list-disc list-outside list ml-2 space-y-1 my-2 pl-1">{children}</ol>
   ),
   li: ({ children }) => (
-    <li className="text-textPrimary leading-relaxed">{children}</li>
+    <li className="dark:text-textPrimary text-justify leading-relaxed">{children}</li>
   ),
   code: ({ inline, children }) =>
     inline ? (
