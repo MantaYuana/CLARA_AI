@@ -26,6 +26,7 @@ import UploadModal from "./UploadModal";
  */
 const SourcesPanel = ({
   sources,
+  isLoading,
   selectedCount,
   onProcessFiles,
   onToggleSelect,
@@ -190,7 +191,19 @@ const SourcesPanel = ({
             )}
 
             {/* File list & Empty State */}
-            {sources.length === 0 ? (
+            {isLoading ? (
+              <div className="flex flex-col gap-2 mt-4 px-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse flex items-center gap-3 w-full h-11 bg-gray-100 dark:bg-surfaceLight rounded-lg">
+                    <div className="w-9 h-9 bg-gray-200 dark:bg-surface rounded-lg shrink-0 ml-1"></div>
+                    <div className="flex flex-col gap-1 flex-1 pr-2">
+                      <div className="h-2.5 w-3/4 bg-gray-200 dark:bg-surface rounded-full"></div>
+                      <div className="h-2 w-1/2 bg-gray-200 dark:bg-surface rounded-full"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sources.length === 0 ? (
               <div className="flex flex-col items-center mt-6 px-2 text-center">
                 <p className="text-textSecondary text-xs mb-3">
                   No files yet. Upload a contract to get started.

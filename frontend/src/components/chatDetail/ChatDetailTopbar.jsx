@@ -76,7 +76,7 @@ const ChatDetailTopbar = ({
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
         {/* Create New Chat */}
         <button
-          onClick={onCreateNew}
+          onClick={() => window.location.href = "/workspace"}
           className={`flex items-center cursor-pointer gap-2 px-2 md:px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
             dark:text-textSecondary hover:text-textPrimary hover:bg-surface`}
           title="Create New Chat"
