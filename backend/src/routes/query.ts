@@ -194,4 +194,91 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+/**
+ * @swagger
+ * /api/v1/query/history/{sessionId}:
+ *   get:
+ *     summary: Retrieve chat history for a specific query session
+ *     tags: [Query]
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Chat history
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/history/:sessionId", async (req: Request, res: Response): Promise<void> => {
+  const sessionId = req.params.sessionId as string;
+
+  try {
+    const { getSessionHistory } = await import("../services/chat/chatService");
+    const historyData = await getSessionHistory(sessionId);
+    const history = Array.isArray(historyData)
+      ? historyData
+      : (historyData as any).history ?? [];
+
+    res.json(
+      success({
+        session_id: sessionId,
+        history,
+      }),
+    );
+  } catch (err: unknown) {
+    console.error("[query/history]", err);
+    res.status(500).json(error("INTERNAL", "Failed to retrieve chat history"));
+  }
+});
+
+/**
+ * @swagger
+ * /api/v1/query/sessions:
+ *   get:
+ *     summary: List all query chat sessions for the current user
+ *     tags: [Query]
+ *     responses:
+ *       200:
+ *         description: List of sessions
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/sessions", async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
+
+  try {
+    const session = await getSession();
+    const result = await session.run(
+      `
+            MATCH (cs:ChatSession { user_id: $userId, endpoint_type: 'query' })
+            OPTIONAL MATCH (cs)-[:HAS_MESSAGE]->(cm:ChatMessage)
+            WITH cs, cm ORDER BY cm.timestamp ASC
+            WITH cs.id AS sessionId, 
+                 toString(cs.updated_at) AS lastUpdated, 
+                 collect(cm.content) AS messages
+            RETURN sessionId, 
+                   lastUpdated, 
+                   COALESCE(messages[0], 'Percakapan Baru') AS preview
+            ORDER BY lastUpdated DESC
+            `,
+      { userId },
+    );
+    await session.close();
+
+    const sessions = result.records.map((record) => ({
+      session_id: record.get("sessionId"),
+      last_updated: record.get("lastUpdated"),
+      preview: record.get("preview") || "Percakapan Baru",
+    }));
+
+    res.json(success(sessions));
+  } catch (err: unknown) {
+    console.error("[query/sessions]", err);
+    res.status(500).json(error("INTERNAL", "Failed to retrieve sessions list"));
+  }
+});
+
 export default router;
