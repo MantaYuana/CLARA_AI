@@ -77,11 +77,11 @@ const ChatDetailTopbar = ({
         {/* Create New Chat */}
         <button
           onClick={onCreateNew}
-          className={`flex items-center gap-2 px-2 md:px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
+          className={`flex items-center cursor-pointer gap-2 px-2 md:px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
             dark:text-textSecondary hover:text-textPrimary hover:bg-surface`}
           title="Create New Chat"
         >
-          <TiDocumentAdd className="text-base md:text-lg flex-shrink-0" />
+          <TiDocumentAdd className="text-base md:text-lg shrink-0" />
           <span className="hidden sm:inline text-xs md:text-sm">New Chat</span>
         </button>
 
@@ -90,7 +90,7 @@ const ChatDetailTopbar = ({
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-1.5 md:p-2 rounded-lg hover:bg-surface transition duration-200"
+          className="p-1.5 md:p-2 rounded-lg cursor-pointer hover:bg-surface transition duration-200"
           title={isDark ? "Light mode" : "Dark mode"}
         >
           {isDark ? (
