@@ -551,7 +551,7 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
 
   // 1. Fetch persistent history
   const { getSessionHistory, saveChatMessage } = await import("../chat/chatService");
-  const storedHistory = await getSessionHistory(req.session_id);
+  const { history: storedHistory } = await getSessionHistory(req.session_id);
 
   // Format history for classification and extraction (which expect "user" | "assistant")
   const historyForFunctions = storedHistory.map(h => ({

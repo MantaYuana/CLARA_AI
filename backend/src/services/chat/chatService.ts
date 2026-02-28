@@ -20,6 +20,11 @@ export interface StoredChatMessage extends ChatMessage {
     timestamp: string;
 }
 
+export interface SessionHistory {
+    endpoint_type: EndpointType | null;
+    history: StoredChatMessage[];
+}
+
 /**
  * Saves a new message to a ChatSession.
  * If the session doesn't exist, it creates it.
@@ -78,27 +83,49 @@ export async function saveChatMessage(
  */
 export async function getSessionHistory(
     sessionId: string,
-): Promise<StoredChatMessage[]> {
+): Promise<SessionHistory> {
     const dbSession = await getSession();
     try {
         const result = await dbSession.run(
             `
-      MATCH (cs:ChatSession { id: $sessionId })-[:HAS_MESSAGE]->(cm:ChatMessage)
-      RETURN cm.id AS id, cm.role AS role, cm.content AS content, toString(cm.timestamp) AS timestamp
-      ORDER BY cm.timestamp ASC
+      MATCH (cs:ChatSession { id: $sessionId })
+      OPTIONAL MATCH (cs)-[:HAS_MESSAGE]->(cm:ChatMessage)
+      WITH cs, cm ORDER BY cm.timestamp ASC
+      RETURN cs.endpoint_type AS endpoint_type, 
+             collect({ 
+                 id: cm.id, 
+                 role: cm.role, 
+                 content: cm.content, 
+                 timestamp: toString(cm.timestamp) 
+             }) AS history
       `,
             { sessionId },
         );
 
-        return result.records.map((record) => ({
-            id: record.get("id"),
-            role: record.get("role") as ChatRole,
-            content: record.get("content"),
-            timestamp: record.get("timestamp"),
-        }));
+        if (result.records.length === 0) {
+            return { endpoint_type: null, history: [] };
+        }
+
+        const record = result.records[0];
+        const rawHistory = record.get("history") as any[];
+
+        // Filter out null messages (produced by OPTIONAL MATCH if no messages exist)
+        const history = rawHistory
+            .filter((m) => m.id !== null)
+            .map((m) => ({
+                id: m.id,
+                role: m.role as ChatRole,
+                content: m.content,
+                timestamp: m.timestamp,
+            }));
+
+        return {
+            endpoint_type: record.get("endpoint_type") as EndpointType,
+            history,
+        };
     } catch (err) {
         console.warn("[chatService] Failed to fetch chat history:", err);
-        return [];
+        return { endpoint_type: null, history: [] };
     } finally {
         await dbSession.close();
     }

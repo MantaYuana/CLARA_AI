@@ -134,7 +134,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     // 0. Load history from DB
     const { getSessionHistory, saveChatMessage } = await import("../services/chat/chatService");
-    const storedHistory = await getSessionHistory(session_id);
+    const { history: storedHistory } = await getSessionHistory(session_id);
 
     // 1. Save user's question immediately
     await saveChatMessage(session_id, userId, "query", "user", question, document_id);
