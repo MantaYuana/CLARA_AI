@@ -23,14 +23,14 @@ export type DocumentType = "LoI" | "MoU" | "PKS";
 export type DrafterStatus = "needs_clarification" | "draft_ready" | "error";
 
 export interface ConversationTurn {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "model";
   content: string;
 }
 
 export interface DrafterRequest {
   session_id: string;
   message: string;
-  history: ConversationTurn[];
+  history?: ConversationTurn[];
   userId?: string; // set from JWT auth
 }
 
@@ -511,7 +511,19 @@ function assembleDraft(
 
   let doc = `# ${typeLabels[documentType]}\n`;
   doc += `**Number: ${documentNumber}**\n\n`;
-  doc += `*Executed in Jakarta, on ${dateStr}*\n\n---\n\n`;
+  doc += `---\n\n`;
+  doc += `This **${typeLabels[documentType]}** (hereinafter referred to as the "Agreement") is executed in Jakarta, on **${dateStr}**, by and between:\n\n`;
+
+  doc += `**1. ${fields.party_a_name ?? "[Name of First Party]"}**\n\n`;
+  doc += `${fields.party_a_details ?? "[Details/Address of First Party]"}\n\n`;
+  doc += `(hereinafter referred to as the **"FIRST PARTY"**).\n\n`;
+
+  doc += `**2. ${fields.party_b_name ?? "[Name of Second Party]"}**\n\n`;
+  doc += `${fields.party_b_details ?? "[Details/Address of Second Party]"}\n\n`;
+  doc += `(hereinafter referred to as the **"SECOND PARTY"**).\n\n`;
+
+  doc += `The FIRST PARTY and the SECOND PARTY (collectively referred to as the "Parties") mutually agree to the following terms and conditions:\n\n`;
+  doc += `---\n\n`;
 
   for (const tmpl of templates) {
     doc += `## ${tmpl.title}\n\n`;
@@ -519,9 +531,15 @@ function assembleDraft(
     doc += "\n\n";
   }
 
-  doc += `---\n\n*IN WITNESS WHEREOF, this ${typeLabels[documentType]} is executed consciously and without coercion from any party.*\n\n`;
-  doc += `**FIRST PARTY**\n\n\n\n___________________\n${fields.party_a_name ?? "[Name of First Party]"}\n\n`;
-  doc += `**SECOND PARTY**\n\n\n\n___________________\n${fields.party_b_name ?? "[Name of Second Party]"}\n`;
+  doc += `---\n\n`;
+  doc += `*IN WITNESS WHEREOF, this Agreement is executed consciously and without coercion from any party on the date first above written.*\n\n`;
+
+  // GFM Markdown Table for Signatures
+  doc += `| **FIRST PARTY** | **SECOND PARTY** |\n`;
+  doc += `| :---: | :---: |\n`;
+  doc += `| <br><br><br><br> | <br><br><br><br> |\n`;
+  doc += `| __________________________ | __________________________ |\n`;
+  doc += `| **${fields.party_a_name ?? "[Name of First Party]"}** | **${fields.party_b_name ?? "[Name of Second Party]"}** |\n`;
 
   return doc;
 }
@@ -529,13 +547,33 @@ function assembleDraft(
 // Main export
 
 export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterResponse> {
-  const fullHistory = [...req.history, { role: "user" as const, content: req.message }];
   const userId = req.userId ?? "anonymous";
 
-  // 1. Classify intent
-  const documentType = await classifyIntent(req.message, req.history);
+  // 1. Fetch persistent history
+  const { getSessionHistory, saveChatMessage } = await import("../chat/chatService");
+  const storedHistory = await getSessionHistory(req.session_id);
 
-  // 2. Binding warning
+  // Format history for classification and extraction (which expect "user" | "assistant")
+  const historyForFunctions = storedHistory.map(h => ({
+    role: (h.role === "model" || h.role === "assistant") ? "assistant" as const : "user" as const,
+    content: h.content,
+  }));
+
+  // Format history for Gemini (which expects "user" | "model")
+  const historyForGemini = storedHistory.map(h => ({
+    role: (h.role === "assistant" || h.role === "model") ? "model" as const : "user" as const,
+    content: h.content,
+  }));
+
+  const fullHistory = [...historyForGemini, { role: "user" as const, content: req.message }];
+
+  // 1b. Save the user's incoming message immediately
+  await saveChatMessage(req.session_id, userId, "drafter", "user", req.message);
+
+  // 2. Classify intent
+  const documentType = await classifyIntent(req.message, historyForGemini);
+
+  // ... [Binding warning logic] ...
   const allUserText = fullHistory
     .filter((h) => h.role === "user")
     .map((h) => h.content)
@@ -543,7 +581,7 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
   const binding_warning = documentType === "MoU" && hasBindingTerms(allUserText);
 
   // 3. Extract fields
-  const fields = await extractFields(req.message, req.history, documentType);
+  const fields = await extractFields(req.message, historyForFunctions, documentType);
 
   // 4. Confidence gate (Module 5)
   const { score, missingCritical } = assessCompleteness(fields, documentType);
@@ -553,14 +591,18 @@ export async function runDrafterTurn(req: DrafterRequest): Promise<DrafterRespon
     await persistDrafterSession(req.session_id, userId, fields, documentType).catch(
       () => { },
     );
-    const isEvasion = detectEvasion(req.history, missingCritical);
+    const isEvasion = detectEvasion(historyForFunctions, missingCritical);
     const question = await generateProactiveQuestion(
       fields,
-      req.history,
+      historyForFunctions,
       documentType,
       missingCritical,
       isEvasion,
     );
+
+    // Save AI question to history
+    await saveChatMessage(req.session_id, userId, "drafter", "model", question);
+
     return {
       status: "needs_clarification",
       document_type: documentType,

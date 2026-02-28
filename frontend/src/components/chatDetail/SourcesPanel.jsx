@@ -40,15 +40,6 @@ const SourcesPanel = ({
   const [recentlyReadyIds, setRecentlyReadyIds] = useState([]);
   const prevSourcesRef = useRef(sources);
 
-  // ── My Documents state ─────────────────────────────────────────────────────
-  // const [userDocuments, setUserDocuments] = useState([]);
-  // const [docsLoading, setDocsLoading] = useState(false);
-  // const [docsError, setDocsError] = useState(null);
-
-  // useEffect(() => {
-  //   const loadDocs = async () => { ... }
-  // }, []);
-
   useEffect(() => {
     const newReadyIds = [];
 
@@ -103,19 +94,6 @@ const SourcesPanel = ({
     );
   };
 
-  /** Format a date string into a short readable form */
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "";
-    }
-  };
-
   return (
     <>
       <div
@@ -126,9 +104,19 @@ const SourcesPanel = ({
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 dark:border-border shrink-0">
           {!collapsed && (
-            <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
-              Upload File
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-800 dark:text-textPrimary text-sm font-semibold">
+                Upload File
+              </span>
+              {sources.length > 0 && !isDraftMode && (
+                <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-0.5 rounded-full">
+                  <HiOutlineDocumentText className="text-primary text-xs" />
+                  <span className="text-primary font-medium">
+                    {sources.length} source{sources.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
           <button
             onClick={() => setCollapsed((p) => !p)}
@@ -238,30 +226,31 @@ const SourcesPanel = ({
                   >
                     {renderStatusIcon(s)}
 
-                    {/* File name */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center">
+                        <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center">
                           <HiOutlineDocumentText className="text-primary text-lg" />
                         </div>
-                        <p
-                          className={`text-xs font-medium truncate ${
-                            s.selected && !isDraftMode
-                              ? "text-primary"
-                              : "dark:text-textPrimary text-gray-800"
-                          }`}
-                        >
-                          {s.name}
-                        </p>
+
+                        <div className="flex flex-col flex-1 min-w-0 ml-2 gap-0.5">
+                          <p
+                            className={`text-xs font-medium truncate ${
+                              s.selected && !isDraftMode
+                                ? "text-primary"
+                                : "dark:text-textPrimary text-gray-800"
+                            }`}
+                          >
+                            {s.name}
+                          </p>
+                          {s.status === "analyzing" && (
+                            <p className="dark:text-textSecondary text-[10px] truncate">
+                              Analyzing...
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {s.status === "analyzing" && (
-                        <p className="dark:text-textSecondary text-[10px]">
-                          Analyzing...
-                        </p>
-                      )}
                     </div>
 
-                    {/* Remove button — hidden in draft mode */}
                     {s.status !== "analyzing" && !isDraftMode && (
                       <button
                         onClick={(e) => {
@@ -277,9 +266,6 @@ const SourcesPanel = ({
                 ))}
               </ul>
             )}
-
-            {/* ── My Documents Section (Commented Out) ──────────────── */}
-            {/* ... */}
           </div>
         )}
       </div>

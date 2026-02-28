@@ -18,6 +18,7 @@ import { z } from "zod";
 import { hybridRetrieval } from "../services/retrieval/hybridRetrieval";
 import { reason } from "../services/reasoning/reasoningService";
 import { getSession } from "../config/neo4j";
+import { v4 as uuidv4 } from "uuid";
 import { success, error } from "../utils/response";
 
 const router = Router();
@@ -25,6 +26,7 @@ const router = Router();
 const QuerySchema = z.object({
   question: z.string().min(3, "Question must be at least 3 characters"),
   document_id: z.string().uuid().optional(),
+  session_id: z.string().optional(),
   history: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
     .optional()
@@ -125,16 +127,32 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const { question, document_id, history } = parsed.data;
+  const { question, document_id, history, session_id: req_session_id } = parsed.data;
+  const userId = (req as Request & { user?: { userId: string } }).user?.userId ?? "anonymous";
+  const session_id = req_session_id ?? uuidv4();
 
   try {
-    // 1. Hybrid retrieval (vector + BM25 + symbolic + contract clauses)
+    // 0. Load history from DB
+    const { getSessionHistory, saveChatMessage } = await import("../services/chat/chatService");
+    const storedHistory = await getSessionHistory(session_id);
+
+    // 1. Save user's question immediately
+    await saveChatMessage(session_id, userId, "query", "user", question, document_id);
+
+    // 2. Hybrid retrieval (vector + BM25 + symbolic + contract clauses)
     const context = await hybridRetrieval(question, document_id);
 
     let contextSource: "retrieval" | "raw_text" | "none" = "retrieval";
-    let extraHistory = history.map((h) => ({ role: h.role, content: h.content }));
 
-    // 2. If document_id is provided but context is empty → inject raw_text directly
+    // Combine frontend history (for backward compatibility/migration) with stored history
+    // and format for Gemini reasoning
+    const baseHistory = storedHistory.length > 0 ? storedHistory : history;
+    let extraHistory = baseHistory.map((h) => ({
+      role: (h.role === "assistant" || h.role === "model") ? "model" as const : "user" as const,
+      content: h.content
+    }));
+
+    // 3. If document_id is provided but context is empty → inject raw_text directly
     if (document_id && context.length === 0) {
       const rawText = await fetchDocumentText(document_id);
       if (rawText) {
@@ -154,8 +172,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     const reasoning = await reason(question, context, extraHistory);
 
+    // 4. Save assistant response
+    await saveChatMessage(session_id, userId, "query", "model", reasoning.answer, document_id);
+
     res.json(
       success({
+        session_id,
         answer: reasoning.answer,
         confidence: reasoning.confidence,
         citations: reasoning.citations,

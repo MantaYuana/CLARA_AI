@@ -23,6 +23,9 @@ async function initSchema(): Promise<void> {
       // Module 3 – User isolation
       "CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE",
       "CREATE CONSTRAINT drafter_session_id IF NOT EXISTS FOR (ds:DrafterSession) REQUIRE ds.id IS UNIQUE",
+      // Chat persistence
+      "CREATE CONSTRAINT chat_session_id IF NOT EXISTS FOR (cs:ChatSession) REQUIRE cs.id IS UNIQUE",
+      "CREATE CONSTRAINT chat_message_id IF NOT EXISTS FOR (cm:ChatMessage) REQUIRE cm.id IS UNIQUE",
       // Document storage
       "CREATE CONSTRAINT document_id IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE",
     ];
