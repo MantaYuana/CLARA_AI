@@ -511,7 +511,19 @@ function assembleDraft(
 
   let doc = `# ${typeLabels[documentType]}\n`;
   doc += `**Number: ${documentNumber}**\n\n`;
-  doc += `*Executed in Jakarta, on ${dateStr}*\n\n---\n\n`;
+  doc += `---\n\n`;
+  doc += `This **${typeLabels[documentType]}** (hereinafter referred to as the "Agreement") is executed in Jakarta, on **${dateStr}**, by and between:\n\n`;
+
+  doc += `**1. ${fields.party_a_name ?? "[Name of First Party]"}**\n\n`;
+  doc += `${fields.party_a_details ?? "[Details/Address of First Party]"}\n\n`;
+  doc += `(hereinafter referred to as the **"FIRST PARTY"**).\n\n`;
+
+  doc += `**2. ${fields.party_b_name ?? "[Name of Second Party]"}**\n\n`;
+  doc += `${fields.party_b_details ?? "[Details/Address of Second Party]"}\n\n`;
+  doc += `(hereinafter referred to as the **"SECOND PARTY"**).\n\n`;
+
+  doc += `The FIRST PARTY and the SECOND PARTY (collectively referred to as the "Parties") mutually agree to the following terms and conditions:\n\n`;
+  doc += `---\n\n`;
 
   for (const tmpl of templates) {
     doc += `## ${tmpl.title}\n\n`;
@@ -519,9 +531,15 @@ function assembleDraft(
     doc += "\n\n";
   }
 
-  doc += `---\n\n*IN WITNESS WHEREOF, this ${typeLabels[documentType]} is executed consciously and without coercion from any party.*\n\n`;
-  doc += `**FIRST PARTY**\n\n\n\n___________________\n${fields.party_a_name ?? "[Name of First Party]"}\n\n`;
-  doc += `**SECOND PARTY**\n\n\n\n___________________\n${fields.party_b_name ?? "[Name of Second Party]"}\n`;
+  doc += `---\n\n`;
+  doc += `*IN WITNESS WHEREOF, this Agreement is executed consciously and without coercion from any party on the date first above written.*\n\n`;
+
+  // GFM Markdown Table for Signatures
+  doc += `| **FIRST PARTY** | **SECOND PARTY** |\n`;
+  doc += `| :---: | :---: |\n`;
+  doc += `| <br><br><br><br> | <br><br><br><br> |\n`;
+  doc += `| __________________________ | __________________________ |\n`;
+  doc += `| **${fields.party_a_name ?? "[Name of First Party]"}** | **${fields.party_b_name ?? "[Name of Second Party]"}** |\n`;
 
   return doc;
 }
