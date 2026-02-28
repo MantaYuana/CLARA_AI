@@ -99,6 +99,7 @@ const useSources = () => {
           prev.map((s) => (s.id === item.id ? { ...s, status: "error" } : s)),
         );
         toast.error(`Failed to analyze "${truncateName(item.name)}"`);
+      }
     }
   };
 

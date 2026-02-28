@@ -145,6 +145,9 @@ const ChatDetail = () => {
             background: "#1a1721",
             color: "#f0edf5",
             border: "1px solid #3a3444",
+            maxWidth: "360px",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
           },
         }}
       />
